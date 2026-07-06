@@ -1,32 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 
-/* ── storage polyfill ─────────────────────────────────────────────
-   The original artifact used Claude.ai's window.storage API. Outside
-   Claude, we back it with localStorage so saving/loading works the
-   same way once this is hosted on its own. ─────────────────────── */
-if (typeof window !== "undefined" && !window.storage) {
-  window.storage = {
-    async get(key) {
-      const v = window.localStorage.getItem(key);
-      if (v === null) throw new Error("not found");
-      return { key, value: v, shared: false };
-    },
-    async set(key, value) {
-      window.localStorage.setItem(key, value);
-      return { key, value, shared: false };
-    },
-    async delete(key) {
-      window.localStorage.removeItem(key);
-      return { key, deleted: true, shared: false };
-    },
-    async list(prefix) {
-      const keys = Object.keys(window.localStorage).filter((k) => !prefix || k.startsWith(prefix));
-      return { keys, prefix, shared: false };
-    },
-  };
-}
-
-
 /* ─────────────────────────────  SUKOON  ─────────────────────────────
    A gentle day studio for Pragya — wellness-grade calm, premium craft.
    Intentions (work/personal, custom recurrence, sub-steps, someday)
