@@ -4,7 +4,7 @@ A gentle daily studio — intentions, journal, breathing, pocket. Built as a
 single React component; this folder wraps it in a minimal Vite project so
 it can be hosted on GitHub Pages.
 
-## What changed from the Claude artifact
+## What changed from the Claude artifacts
 
 Claude's chat environment gives artifacts a `window.storage` API for saving
 data. That API doesn't exists in a normal browser, so `src/App.jsx` starts
