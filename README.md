@@ -7,7 +7,7 @@ it can be hosted on GitHub Pages.
 ## What changed from the Claude artifact
 
 Claude's chat environment gives artifacts a `window.storage` API for saving
-data. That API doesn't exist in a normal browser, so `src/App.jsx` starts
+data. That API doesn't exists in a normal browser, so `src/App.jsx` starts
 with a small polyfill that backs the same calls with `localStorage`
 instead. Everything else is unchanged — data still autosaves, still lives
 only in the visiting browser (one person's data isn't visible to anyone
