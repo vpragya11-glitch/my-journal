@@ -5,5 +5,5 @@ import react from '@vitejs/plugin-react'
 // e.g. if your repo is github.com/yourname/my-sukoon-app, set base: '/my-sukoon-app/'
 export default defineConfig({
   plugins: [react()],
-  base: '/sukoon/',
+  base: '/my-journal/',
 })
