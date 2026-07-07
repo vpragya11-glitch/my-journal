@@ -561,8 +561,13 @@ export default function Sukoon() {
     }, ...t]);
     setDraft(""); setDraftRecur({ type: "none", days: [] }); setDraftTime("");
     setDraftTags([]); setDraftTagInput(""); setDraftBucket("today");
-    play("add");
-    if (draftBucket === "someday") flash("Parked for someday");
+    // if the active filter would hide what was just added, clear it so the new intention shows
+  const willHide = draftBucket === "today" &&
+    ((filter !== "all" && filter !== draftCat) || (tagFilter && !tags.includes(tagFilter)));
+  if (willHide) { setFilter("all"); setTagFilter(null); }
+  play("add");
+  if (draftBucket === "someday") flash("Parked for someday");
+  else if (willHide) flash("Added — cleared the filter so you can see it");
   };
   const addStarter = (s) => {
     const minOrder = todos.length ? Math.min(...todos.map(orderOf)) : 0;
