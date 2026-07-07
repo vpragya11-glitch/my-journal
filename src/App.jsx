@@ -2059,6 +2059,10 @@ function GardenCard({ sprouts, flowers, kept, totalEver, streak, pod }) {
           </defs>
           <rect x="0" y="0" width="226" height="122" rx="12" fill="url(#gSky)" />
           <circle cx="198" cy="26" r="12" fill={isNight ? "var(--lilac)" : "var(--pollen)"} opacity="0.85" />
+           <g className="gcloud" opacity="0.5">
+            <ellipse cx="54" cy="24" rx="15" ry="7" fill="var(--surface)" />
+            <ellipse cx="66" cy="21" rx="11" ry="6" fill="var(--surface)" />
+          </g>
           {isNight && <circle cx="193" cy="23" r="12" fill="var(--surface)" opacity="0.7" />}
           <path d="M0 96 Q 56 82 118 92 T 226 88 L226 122 L0 122 Z" fill="var(--moss-soft)" />
           <path d="M0 104 Q 60 96 120 102 T 226 100 L226 122 L0 122 Z" fill="var(--moss)" opacity="0.28" />
@@ -2890,4 +2894,25 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 
 /* the aging tree sways slower and gentler than the day's sprouts */
 .gtree{transform-box:fill-box; transform-origin:bottom center; animation:gsway 7.5s ease-in-out infinite}
+/* motion polish — gentle staggered entrances; the global reduced-motion guard already covers these */
+@keyframes riseFade{from{opacity:0; transform:translateY(9px)}to{opacity:1; transform:none}}
+
+.heroText > *{animation:riseFade .55s cubic-bezier(.22,1,.36,1) both}
+.heroText > *:nth-child(1){animation-delay:.02s}
+.heroText > *:nth-child(2){animation-delay:.09s}
+.heroText > *:nth-child(3){animation-delay:.16s}
+.heroText > *:nth-child(4){animation-delay:.23s}
+.heroText > *:nth-child(5){animation-delay:.30s}
+.heroText > *:nth-child(6){animation-delay:.37s}
+.heroText > *:nth-child(7){animation-delay:.44s}
+
+.side > *{animation:riseFade .5s cubic-bezier(.22,1,.36,1) both}
+.side > *:nth-child(1){animation-delay:.06s}
+.side > *:nth-child(2){animation-delay:.13s}
+.side > *:nth-child(3){animation-delay:.20s}
+.side > *:nth-child(4){animation-delay:.27s}
+.side > *:nth-child(5){animation-delay:.34s}
+.side > *:nth-child(6){animation-delay:.41s}
+.gcloud{transform-box:view-box; animation:gdrift 26s ease-in-out infinite}
+@keyframes gdrift{0%,100%{transform:translateX(0)}50%{transform:translateX(14px)}}
 `;
