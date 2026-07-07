@@ -36,15 +36,20 @@ const localLayer = (() => {
 
 const store = {
   async get(key) {
+    const local = await localLayer.get(key);
     if (supabase) {
       try {
         const { data, error } = await supabase.from("sukoon_store").select("value").eq("key", key).maybeSingle();
         if (error) throw error;
         if (data) { await localLayer.set(key, data.value); return { value: data.value }; }
-        return null;
+        // no cloud row yet — seed it from the local copy if we have one
+        if (local && local.value) {
+          try { await supabase.from("sukoon_store").upsert({ key, value: local.value, updated_at: new Date().toISOString() }, { onConflict: "key" }); } catch (e) {}
+        }
+        return local;
       } catch (e) { console.warn("Supabase read failed — using local copy", e); }
     }
-    return localLayer.get(key);
+    return local;
   },
   async set(key, value) {
     await localLayer.set(key, value); // always keep a local copy first
@@ -457,7 +462,7 @@ export default function Sukoon() {
     (async () => {
       let found = false;
       try {
-        const res = await window.storage.get(STORAGE_KEY);
+        const res = await store.get(STORAGE_KEY);
         if (res && res.value) {
           const d = JSON.parse(res.value);
           setTodos(d.todos || []); setJournal(d.journal || []); setPocket(d.pocket || []);
@@ -470,7 +475,7 @@ export default function Sukoon() {
       if (!found) {
         for (const k of ["pragya-dashboard-v3", "pragya-dashboard-v2"]) {
           try {
-            const old = await window.storage.get(k);
+            const old = await store.get(k);
             if (old && old.value) {
               const d = JSON.parse(old.value);
               setTodos(d.todos || []); setJournal(d.journal || []); setPocket(d.pocket || []);
@@ -499,7 +504,7 @@ export default function Sukoon() {
   useEffect(() => {
     if (!loaded) return;
     const t = setTimeout(async () => {
-      try { await window.storage.set(STORAGE_KEY, JSON.stringify({ todos, journal, pocket, gratitude, soundOn, theme })); }
+     try { await store.set(STORAGE_KEY, JSON.stringify({ todos, journal, pocket, gratitude, soundOn, theme })); }
       catch (e) { console.error("save failed", e); }
     }, 400);
     return () => clearTimeout(t);
