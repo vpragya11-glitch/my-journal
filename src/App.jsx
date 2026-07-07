@@ -1240,7 +1240,7 @@ export default function Sukoon() {
                 </div>
                 <div className="ribbon" aria-label="Last 7 days">
                   {weekRibbon.map((d) => (
-                    <span key={d.key} className={"ribDay" + (d.active ? " ribOn" : "") + (d.today ? " ribToday" : "")} title={d.label}>
+                    <span key={d.key} className={"ribDay" + (d.active ? " ribOn" : "") + (d.today ? " ribToday" : "")} data-tip={d.label}>
                       <i />
                     </span>
                   ))}
@@ -1296,7 +1296,7 @@ export default function Sukoon() {
                     <button className={"cat personal" + (draftCat === "personal" ? " catOn" : "")} onClick={() => { setDraftCat("personal"); play("nav"); }}>Personal</button>
                     <button className={"cat repeat" + (draftRecur.type !== "none" ? " catOn" : "")} data-tip="Cycle repeat: none → daily → weekdays → custom"
                       onClick={cycleDraftRecur}>🔁 {recurLabel(draftRecur) || "Repeat"}</button>
-                    <button className={"cat someday" + (draftBucket === "someday" ? " catOn" : "")} title="Save for later, pull in when ready"
+                    <button className={"cat someday" + (draftBucket === "someday" ? " catOn" : "")} data-tip="Save for later, pull in when ready"
                       onClick={() => { setDraftBucket((b) => (b === "someday" ? "today" : "someday")); play("nav"); }}>🗂 Someday</button>
                     <span className="tipWrap" data-tip="Optional time — enables calendar export and reminders">
   <input type="time" className="timeIn" value={draftTime} onChange={(e) => setDraftTime(e.target.value)}
@@ -1381,7 +1381,7 @@ export default function Sukoon() {
                             onBlur={() => commitEdit(t.id)}
                           />
                         ) : (
-                          <span className="rowText" onClick={(e) => { e.stopPropagation(); startEdit(t); }} title="Click to edit">
+                          <span className="rowText" onClick={(e) => { e.stopPropagation(); startEdit(t); }} data-tip="Click to edit">
                             {isRecurringItem(t) && <i className="recurMark" data-tip={recurLabel(recur)}>🔁</i>}
                             {t.text}
                           </span>
@@ -1589,7 +1589,7 @@ export default function Sukoon() {
               <div className="moodRow">
                 {MOODS.map(([e, label]) => (
                   <button key={label} className={"mood" + (entryMood === e ? " moodOn" : "")}
-                    title={label} onClick={() => { setEntryMood(entryMood === e ? null : e); play("tap"); }}>
+                    data-tip={label} onClick={() => { setEntryMood(entryMood === e ? null : e); play("tap"); }}>
                     <span>{e}</span><small>{label}</small>
                   </button>
                 ))}
@@ -2068,7 +2068,7 @@ function MonthCard({ offset, setOffset, counts, play, bare }) {
           const n = counts[k] || 0;
           const lvl = n === 0 ? 0 : n === 1 ? 1 : n <= 3 ? 2 : 3;
           return (
-            <span key={i} className={"mCell lvl" + lvl + (k === todayKey ? " mToday" : "")} title={`${d.toDateString()} · ${n} moment${n === 1 ? "" : "s"}`}>
+            <span key={i} className={"mCell lvl" + lvl + (k === todayKey ? " mToday" : "")} data-tip={`${d.toDateString()} · ${n} moment${n === 1 ? "" : "s"}`}>
               {d.getDate()}
             </span>
           );
@@ -2737,9 +2737,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .sk[data-mood="heavy"] .orb, .sk[data-mood="foggy"] .orb{ animation-duration:8s }
 .sk[data-mood="heavy"] .orbHalo{ animation-duration:64s; opacity:.5 }
 .sk[data-mood="heavy"] .petal{ opacity:.55 }
+/* now */
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001s !important; transition-duration:.001s !important}
-  /* themed tooltips, replacing native browser title="" tooltips */
+}
+
+/* themed tooltips, replacing native browser title="" tooltips */
 [data-tip]{position:relative}
 [data-tip]:hover::after, [data-tip]:focus-visible::after{
   content:attr(data-tip);
@@ -2755,5 +2758,4 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 }
 .tipWrap{display:inline-flex; position:relative}
 @keyframes tipIn{from{opacity:0; transform:translateX(-50%) translateY(4px)}to{opacity:1; transform:translateX(-50%) translateY(0)}}
-}
 `;
