@@ -1542,8 +1542,17 @@ export default function Sukoon() {
                 <div className="dayCard">
                   <Arc pct={pct} />
                   <div className="dayText">
-                    <strong>{doneCount} of {todayTodos.length || 0} complete</strong>
-                    <span>{pct === 100 && todayTodos.length ? "The day is full. Well walked." : pct >= 60 ? "Softly, steadily — nearly there." : pct > 0 ? "One small step at a time." : "The page is still fresh."}</span>
+                    {(moodKey === "heavy" || moodKey === "foggy") && pendingAll.length > 0 ? (
+                      <>
+                        <strong>Today felt heavier than usual.</strong>
+                        <span>No need to clear the list. Choose just one thing that still matters — the rest can wait.</span>
+                      </>
+                    ) : (
+                      <>
+                        <strong>{doneCount} of {todayTodos.length || 0} complete</strong>
+                        <span>{pct === 100 && todayTodos.length ? "The day is full. Well walked." : pct >= 60 ? "Softly, steadily — nearly there." : pct > 0 ? "One small step at a time." : "The page is still fresh."}</span>
+                      </>
+                    )}
                   </div>
                 </div>
                  <GardenCard sprouts={garden.sprouts} flowers={garden.flowers} kept={garden.kept}
@@ -1773,7 +1782,7 @@ export default function Sukoon() {
                     <MoodTrend points={weekMood} />
                   </div>
                 ) : (
-                  <Empty msg="Write a few more journal entries to see your mood trend for the week." />
+                  <Empty msg="Give yourself a few quiet days — we'll reflect together when there's more to look back on." />
                 )}
 
                 <div className="noteCard">
@@ -1816,7 +1825,7 @@ export default function Sukoon() {
                     <MoodTrend points={reviewMonthStats.moods} />
                   </div>
                 ) : (
-                  <Empty msg="Write a few more journal entries to see your mood trend for the month." />
+                  <Empty msg="A few more gentle days, and a shape will begin to show here." />
                 )}
 
                 <div className="noteCard">
@@ -2519,9 +2528,10 @@ h3{font-family:'Instrument Serif',serif; font-size:18px}
 .row.done .tick{background:var(--moss); border-color:var(--moss)}
 .row.personal.done .tick{background:var(--rose); border-color:var(--rose)}
 .row.done .tick svg{stroke-dashoffset:0}
-.rowText{flex:1 1 160px; min-width:160px; font-size:14.5px; line-height:1.45; word-break:break-word; border-radius:8px; padding:2px 4px; margin:-2px -4px; transition:background .15s; display:flex; align-items:center; gap:6px}
+.rowText{flex:1 1 160px; min-width:160px; font-size:14.5px; line-height:1.45; overflow-wrap:anywhere; border-radius:8px; padding:2px 4px; margin:-2px -4px; transition:background .15s;
+  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
 .rowText:hover{background:color-mix(in srgb, var(--ink) 5%, transparent)}
-.recurMark{font-size:11px; flex:none; opacity:.8}
+.recurMark{font-size:11px; opacity:.8; margin-right:5px}
 .rowEdit{flex:1; min-width:0; font:500 14.5px 'Instrument Sans'; color:var(--ink); background:var(--surface2); border:1px solid var(--moss);
   border-radius:8px; padding:5px 8px; outline:none}
 .tag{flex:none; font-size:10.5px; font-weight:650; letter-spacing:.08em; text-transform:uppercase; padding:4px 10px; border-radius:999px}
