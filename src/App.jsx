@@ -1203,19 +1203,19 @@ export default function Sukoon() {
           ))}
         </nav>
         <div className="topBtns">
-          <button className={"round" + (soundOn ? " active" : "")} title={soundOn ? "Sounds on" : "Sounds off"}
+          <button className={"round" + (soundOn ? " active" : "")} data-tip={soundOn ? "Sounds on" : "Sounds off"}
             onClick={() => { setSoundOn((s) => !s); if (!soundOn) SOUNDS.tap(); }} aria-pressed={soundOn}>
             <svg viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9H5z" fill="currentColor" opacity=".9"/><path d="M17.5 9.5a4 4 0 0 1 0 5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" opacity={soundOn ? 1 : 0.25}/></svg>
           </button>
-          <button className="round" title="Switch theme" onClick={() => { setTheme((t) => (t === "dawn" ? "dusk" : "dawn")); play("tap"); }}>
+          <button className="round" data-tip="Switch theme" onClick={() => { setTheme((t) => (t === "dawn" ? "dusk" : "dawn")); play("tap"); }}>
             {theme === "dawn"
               ? <svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z" fill="currentColor"/></svg>
               : <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.4" fill="currentColor"/><path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21M5.6 5.6l1.7 1.7M16.7 16.7l1.7 1.7M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>}
           </button>
-          <button className="round" title="Download a backup of your data" onClick={exportAllData}>
+          <button className="round" data-tip="Download a backup of your data" onClick={exportAllData}>
             <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
-          <button className="round" title="Merge in a backup file" onClick={() => importInputRef.current && importInputRef.current.click()}>
+          <button className="round" data-tip="Merge in a backup file" onClick={() => importInputRef.current && importInputRef.current.click()}>
             <svg viewBox="0 0 24 24"><path d="M12 21V9m0 0l-4 4m4-4l4 4M5 5h14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
           <input ref={importInputRef} type="file" accept="application/json" style={{ display: "none" }} onChange={importAllData} />
@@ -1255,14 +1255,14 @@ export default function Sukoon() {
                 <div className="secHead">
                   <h2>Intentions</h2>
                   <div className="secHeadRight">
-                    <button className="exportLink" onClick={copyAsSlack} title="Copy today's completed intentions, formatted for Slack">Copy as Slack ⎘</button>
+                    <button className="exportLink" onClick={copyAsSlack} data-tip="Copy today's completed intentions, formatted for Slack">Copy as Slack ⎘</button>
                     <button className="exportLink" onClick={exportToCalendar}>Export to calendar ↓</button>
-                    {doneCount > 0 && <button className="exportLink" onClick={clearCompleted} title="Remove completed, one-time intentions (or press C)">Clear completed ✓</button>}
+                    {doneCount > 0 && <button className="exportLink" onClick={clearCompleted} data-tip="Remove completed, one-time intentions (or press C)">Clear completed ✓</button>}
                     <div className="sortToggle" role="radiogroup" aria-label="Sort intentions">
                       <button role="radio" aria-checked={sortMode === "manual"} className={"sortPill" + (sortMode === "manual" ? " sortOn" : "")}
-                        title="Drag to arrange your own order" onClick={() => { setSortMode("manual"); play("nav"); }}>⠿ Manual</button>
+                        data-tip="Drag to arrange your own order" onClick={() => { setSortMode("manual"); play("nav"); }}>⠿ Manual</button>
                       <button role="radio" aria-checked={sortMode === "time"} className={"sortPill" + (sortMode === "time" ? " sortOn" : "")}
-                        title="Order by time of day" onClick={() => { setSortMode("time"); play("nav"); }}>🕐 By time</button>
+                        data-tip="Order by time of day" onClick={() => { setSortMode("time"); play("nav"); }}>🕐 By time</button>
                     </div>
                     <div className="filters">
                       {["all", "work", "personal"].map((f) => (
@@ -1273,7 +1273,7 @@ export default function Sukoon() {
                       ))}
                     </div>
                     {activeFilterCount > 0 && (
-                      <button className="activeFilterBadge" onClick={clearAllFilters} title="Clear active filters">
+                      <button className="activeFilterBadge" onClick={clearAllFilters} data-tip="Clear active filters">
                         {activeFilterCount} filter{activeFilterCount === 1 ? "" : "s"} active ×
                       </button>
                     )}
@@ -1294,12 +1294,12 @@ export default function Sukoon() {
                   <div className="catRow">
                     <button className={"cat work" + (draftCat === "work" ? " catOn" : "")} onClick={() => { setDraftCat("work"); play("nav"); }}>Work</button>
                     <button className={"cat personal" + (draftCat === "personal" ? " catOn" : "")} onClick={() => { setDraftCat("personal"); play("nav"); }}>Personal</button>
-                    <button className={"cat repeat" + (draftRecur.type !== "none" ? " catOn" : "")} title="Cycle repeat: none → daily → weekdays → custom"
+                    <button className={"cat repeat" + (draftRecur.type !== "none" ? " catOn" : "")} data-tip="Cycle repeat: none → daily → weekdays → custom"
                       onClick={cycleDraftRecur}>🔁 {recurLabel(draftRecur) || "Repeat"}</button>
                     <button className={"cat someday" + (draftBucket === "someday" ? " catOn" : "")} title="Save for later, pull in when ready"
                       onClick={() => { setDraftBucket((b) => (b === "someday" ? "today" : "someday")); play("nav"); }}>🗂 Someday</button>
                     <input type="time" className="timeIn" value={draftTime} onChange={(e) => setDraftTime(e.target.value)}
-                      title="Optional time — enables calendar export and reminders" aria-label="Optional time" />
+                      data-tip="Optional time — enables calendar export and reminders" aria-label="Optional time" />
                     <input className="tagIn" value={draftTagInput} onChange={(e) => setDraftTagInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); commitDraftTag(); } }}
                       onBlur={() => draftTagInput.trim() && commitDraftTag()}
@@ -1364,7 +1364,7 @@ export default function Sukoon() {
                           onDragStart={onRowDragStart(t.id)}
                           onDragEnd={onRowDragEnd}
                           onClick={(e) => e.stopPropagation()}
-                          title={sortMode === "manual" ? "Drag to reorder" : "Switch to Manual sort to drag"} aria-label="Drag to reorder">⠿</span>
+                          data-tip={sortMode === "manual" ? "Drag to reorder" : "Switch to Manual sort to drag"} aria-label="Drag to reorder">⠿</span>
                         <button className="tick" onClick={(e) => { e.stopPropagation(); toggleTodo(t.id); }} aria-label={t.done ? "Mark as not done" : "Mark as done"}>
                           <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" fill="none" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
                         </button>
@@ -1380,7 +1380,7 @@ export default function Sukoon() {
                           />
                         ) : (
                           <span className="rowText" onClick={(e) => { e.stopPropagation(); startEdit(t); }} title="Click to edit">
-                            {isRecurringItem(t) && <i className="recurMark" title={recurLabel(recur)}>🔁</i>}
+                            {isRecurringItem(t) && <i className="recurMark" data-tip={recurLabel(recur)}>🔁</i>}
                             {t.text}
                           </span>
                         )}
@@ -1397,11 +1397,11 @@ export default function Sukoon() {
                             onBlur={() => (tagInput.trim() ? commitRowTag(t.id) : setTaggingId(null))}
                             placeholder="tag…" aria-label="Add a tag" />
                         ) : (
-                          <button className="rowIcon" title="Add a tag"
+                          <button className="rowIcon" data-tip="Add a tag"
                             onClick={(e) => { e.stopPropagation(); setTaggingId(t.id); setTagInput(""); }}>#+</button>
                         )}
                         {subs.length > 0 && (
-                          <button className={"stepsBadge" + (subDone === subs.length ? " stepsDone" : "")} title="Steps"
+                          <button className={"stepsBadge" + (subDone === subs.length ? " stepsDone" : "")} data-tip="Steps"
                             onClick={(e) => { e.stopPropagation(); setSubOpenId((cur) => (cur === t.id ? null : t.id)); }}>
                             {subDone}/{subs.length} steps
                           </button>
@@ -1409,24 +1409,24 @@ export default function Sukoon() {
                         {t.time && <span className="timeBadge">{t.time}</span>}
                         <span className={"tag " + t.cat}>{t.cat}</span>
                         {isRecurringItem(t) ? (
-                          <button className="rowIcon recurBadge" title="Change how often this repeats"
+                          <button className="rowIcon recurBadge" data-tip="Change how often this repeats"
                             onClick={(e) => { e.stopPropagation(); cycleRowRecur(t.id); }}>🔁 {recurLabel(recur)}</button>
                         ) : (
-                          <button className="rowIcon" title="Make this repeat"
+                          <button className="rowIcon" data-tip="Make this repeat"
                             onClick={(e) => { e.stopPropagation(); cycleRowRecur(t.id); }}>🔁</button>
                         )}
-                        <button className="rowIcon" title={subs.length ? "Add or edit steps" : "Break into a few steps"}
+                        <button className="rowIcon" data-tip={subs.length ? "Add or edit steps" : "Break into a few steps"}
                           onClick={(e) => { e.stopPropagation(); setSubOpenId((cur) => (cur === t.id ? null : t.id)); }}>☰</button>
-                        <button className="rowIcon" title="Add to Google Calendar"
+                        <button className="rowIcon" data-tip="Add to Google Calendar"
                           onClick={(e) => { e.stopPropagation(); window.open(gcalLink(t.text, t.time), "_blank"); }}>📅</button>
                         {t.time && (
                           <button className={"rowIcon" + (t.reminderOn ? " reminderOn" : "")}
-                            title={t.reminderOn ? "Reminder on — click to turn off" : "Set a gentle reminder"}
+                            data-tip={t.reminderOn ? "Reminder on — click to turn off" : "Set a gentle reminder"}
                             onClick={(e) => { e.stopPropagation(); toggleReminder(t.id); }}>🔔</button>
                         )}
-                        <button className="rowIcon" title="Save for someday instead"
+                        <button className="rowIcon" data-tip="Save for someday instead"
                           onClick={(e) => { e.stopPropagation(); sendToSomeday(t.id); }} aria-label="Move to someday">🗂</button>
-                        <button className="rowIcon" title="Duplicate — same thing, next time"
+                        <button className="rowIcon" data-tip="Duplicate — same thing, next time"
                           onClick={(e) => { e.stopPropagation(); duplicateTodo(t.id); }} aria-label="Duplicate intention">⧉</button>
                         <button className="x" onClick={(e) => { e.stopPropagation(); removeTodo(t.id); }} aria-label="Remove">×</button>
                         </div>
@@ -1653,7 +1653,7 @@ export default function Sukoon() {
                     <div className="jMeta">
                       <span className="jMood">{j.mood || "·"}</span>
                       <span className="jDate">{fmtDay(j.stamp)} · {fmtTime(j.stamp)}</span>
-                      <button className="miniEdit" onClick={() => exportEntry(j)} title="Export just this entry">export</button>
+                      <button className="miniEdit" onClick={() => exportEntry(j)} data-tip="Export just this entry">export</button>
                       {editingJournalId !== j.id && <button className="miniEdit" onClick={() => startEditEntry(j)}>edit</button>}
                       <button className="x" onClick={() => removeEntry(j.id)} aria-label="Delete entry">×</button>
                     </div>
@@ -2407,7 +2407,7 @@ h3{font-family:'Instrument Serif',serif; font-size:18px}
 .dragHint{margin:0; font-size:11px; font-weight:550; letter-spacing:.04em; color:var(--faint); font-style:italic; font-family:'Instrument Serif',serif}
 .list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:9px}
 .rowGroup{display:flex; flex-direction:column; gap:6px}
-.row{display:flex; align-items:center; gap:11px; background:var(--surface); border:1px solid var(--border); border-radius:16px;
+.row{display:flex; align-items:center; gap:11px; flex-wrap:wrap; row-gap:6px; background:var(--surface); border:1px solid var(--border); border-radius:16px;
   padding:13px 14px; box-shadow:var(--sh-sm); animation:rise .35s ease both; transition:border-color .25s, transform .25s, opacity .3s, box-shadow .2s; cursor:pointer}
 .row:hover{border-color:var(--border2); transform:translateY(-1px)}
 .row.done{opacity:.5}
@@ -2427,7 +2427,7 @@ h3{font-family:'Instrument Serif',serif; font-size:18px}
 .row.done .tick{background:var(--moss); border-color:var(--moss)}
 .row.personal.done .tick{background:var(--rose); border-color:var(--rose)}
 .row.done .tick svg{stroke-dashoffset:0}
-.rowText{flex:1; min-width:0; font-size:14.5px; line-height:1.45; word-break:break-word; border-radius:8px; padding:2px 4px; margin:-2px -4px; transition:background .15s; display:flex; align-items:center; gap:6px}
+.rowText{flex:1 1 160px; min-width:160px; font-size:14.5px; line-height:1.45; word-break:break-word; border-radius:8px; padding:2px 4px; margin:-2px -4px; transition:background .15s; display:flex; align-items:center; gap:6px}
 .rowText:hover{background:color-mix(in srgb, var(--ink) 5%, transparent)}
 .recurMark{font-size:11px; flex:none; opacity:.8}
 .rowEdit{flex:1; min-width:0; font:500 14.5px 'Instrument Sans'; color:var(--ink); background:var(--surface2); border:1px solid var(--moss);
@@ -2737,5 +2737,20 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .sk[data-mood="heavy"] .petal{ opacity:.55 }
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001s !important; transition-duration:.001s !important}
+  /* themed tooltips, replacing native browser title="" tooltips */
+[data-tip]{position:relative}
+[data-tip]:hover::after, [data-tip]:focus-visible::after{
+  content:attr(data-tip);
+  position:absolute; bottom:calc(100% + 9px); left:50%; transform:translateX(-50%);
+  background:var(--ink); color:var(--bg); font:500 11.5px/1.4 'Instrument Sans';
+  padding:6px 11px; border-radius:8px; white-space:nowrap;
+  box-shadow:var(--sh-sm); z-index:80; pointer-events:none;
+  animation:tipIn .15s ease both;
+}
+[data-tip]:hover::before, [data-tip]:focus-visible::before{
+  content:""; position:absolute; bottom:calc(100% + 4px); left:50%; transform:translateX(-50%);
+  border:5px solid transparent; border-top-color:var(--ink); z-index:80; pointer-events:none;
+}
+@keyframes tipIn{from{opacity:0; transform:translateX(-50%) translateY(4px)}to{opacity:1; transform:translateX(-50%) translateY(0)}}
 }
 `;
