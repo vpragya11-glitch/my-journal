@@ -226,6 +226,7 @@ const MOODS = [
   ["🌧️", "heavy", 1], ["🌫️", "foggy", 2], ["🌿", "steady", 3], ["☀️", "light", 4], ["✨", "bright", 5],
 ];
 const MOOD_VALUE = Object.fromEntries(MOODS.map(([e, , v]) => [e, v]));
+const MOOD_NAME = Object.fromEntries(MOODS.map(([e, n]) => [e, n]));
 
 const PROMPTS = [
   "What felt light today?",
@@ -1045,12 +1046,16 @@ export default function Sukoon() {
     return arr;
   }, [activeDaySet]);
 
-  const monthCounts = useMemo(() => {
+  const dayMeta = useMemo(() => {
     const map = {};
-    const add = (ts) => { const k = dayKey(ts); map[k] = (map[k] || 0) + 1; };
-    todos.filter((t) => t.doneAt).forEach((t) => add(t.doneAt));
-    journal.forEach((j) => add(j.stamp));
-    pocket.forEach((p) => add(p.stamp));
+    const touch = (k) => (map[k] || (map[k] = { count: 0, mood: null, moodStamp: 0, journal: false }));
+    todos.filter((t) => t.doneAt).forEach((t) => { touch(dayKey(t.doneAt)).count++; });
+    pocket.forEach((p) => { touch(dayKey(p.stamp)).count++; });
+    journal.forEach((j) => {
+      const m = touch(dayKey(j.stamp));
+      m.count++; m.journal = true;
+      if (j.mood && j.stamp >= m.moodStamp) { m.mood = j.mood; m.moodStamp = j.stamp; }
+    });
     return map;
   }, [todos, journal, pocket]);
 
@@ -1558,7 +1563,7 @@ export default function Sukoon() {
                  <GardenCard sprouts={garden.sprouts} flowers={garden.flowers} kept={garden.kept}
                   totalEver={garden.totalEver} streak={streak} pod={pod} />
 
-                <MonthCard offset={monthOffset} setOffset={setMonthOffset} counts={monthCounts} play={play} />
+                <MonthCard offset={monthOffset} setOffset={setMonthOffset} meta={dayMeta} play={play} />
 
                 <div className="trailCard">
                   <h3>Today's moments</h3>
@@ -1806,7 +1811,7 @@ export default function Sukoon() {
                       <button onClick={() => { setReviewMonthOffset((o) => Math.min(0, o + 1)); play("nav"); }} aria-label="Next month" disabled={reviewMonthOffset === 0}>›</button>
                     </div>
                   </div>
-                  <MonthCard offset={reviewMonthOffset} setOffset={setReviewMonthOffset} counts={monthCounts} play={play} bare />
+                  <MonthCard offset={reviewMonthOffset} setOffset={setReviewMonthOffset} meta={dayMeta} play={play} bare />
                 </div>
 
                 {reviewMonthStats.topTags.length > 0 && (
@@ -2132,7 +2137,7 @@ function GardenCard({ sprouts, flowers, kept, totalEver, streak, pod }) {
 }
 
 /* ═══ month heatmap ═══ */
-function MonthCard({ offset, setOffset, counts, play, bare }) {
+function MonthCard({ offset, setOffset, meta, play, bare }) {
   const { cells, label } = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear(); const month = now.getMonth() + offset;
@@ -2163,11 +2168,18 @@ function MonthCard({ offset, setOffset, counts, play, bare }) {
         {cells.map((d, i) => {
           if (!d) return <span key={i} className="mCell mEmpty" />;
           const k = dayKey(d.getTime());
-          const n = counts[k] || 0;
-          const lvl = n === 0 ? 0 : n === 1 ? 1 : n <= 3 ? 2 : 3;
+          const m = meta[k] || { count: 0, mood: null, journal: false };
+          const moodName = m.mood ? MOOD_NAME[m.mood] : null;
+          const cls = "mCell"
+            + (moodName ? " mMood-" + moodName : (m.count > 0 ? " mActive" : ""))
+            + (k === todayKey ? " mToday" : "");
+          const tip = `${d.toDateString()} · ${m.count} moment${m.count === 1 ? "" : "s"}`
+            + (m.mood ? " · felt " + MOOD_NAME[m.mood] : "")
+            + (m.journal ? " · journaled" : "");
           return (
-            <span key={i} className={"mCell lvl" + lvl + (k === todayKey ? " mToday" : "")} data-tip={`${d.toDateString()} · ${n} moment${n === 1 ? "" : "s"}`}>
+            <span key={i} className={cls} data-tip={tip}>
               {d.getDate()}
+              {m.journal && <i className="mDot" />}
             </span>
           );
         })}
@@ -2612,12 +2624,16 @@ h3{font-family:'Instrument Serif',serif; font-size:18px}
 .monthNav button:disabled{opacity:.35; cursor:default}
 .monthDow{display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:10px; font-weight:600; color:var(--faint); letter-spacing:.04em}
 .monthGrid{display:grid; grid-template-columns:repeat(7,1fr); gap:3px}
-.mCell{aspect-ratio:1; display:grid; place-items:center; font-size:10px; font-weight:550; color:var(--muted); border-radius:7px; background:var(--surface2); font-variant-numeric:tabular-nums}
+.mCell{position:relative; aspect-ratio:1; display:grid; place-items:center; font-size:10px; font-weight:550; color:var(--muted); border-radius:7px; background:var(--surface2); font-variant-numeric:tabular-nums; transition:background .3s}
 .mCell.mEmpty{background:transparent}
-.mCell.lvl1{background:color-mix(in srgb, var(--moss) 24%, var(--surface2)); color:var(--ink)}
-.mCell.lvl2{background:color-mix(in srgb, var(--moss) 50%, var(--surface2)); color:var(--ink)}
-.mCell.lvl3{background:var(--moss); color:var(--bg)}
+.mCell.mActive{background:color-mix(in srgb, var(--moss) 22%, var(--surface2)); color:var(--ink)}
+.mCell.mMood-bright{background:color-mix(in srgb, #E7C766 40%, var(--surface2)); color:var(--ink)}
+.mCell.mMood-light{background:color-mix(in srgb, #EBB98C 40%, var(--surface2)); color:var(--ink)}
+.mCell.mMood-steady{background:color-mix(in srgb, #A9C79A 44%, var(--surface2)); color:var(--ink)}
+.mCell.mMood-foggy{background:color-mix(in srgb, #B7ADD8 42%, var(--surface2)); color:var(--ink)}
+.mCell.mMood-heavy{background:color-mix(in srgb, #8D84B5 38%, var(--surface2)); color:var(--ink)}
 .mCell.mToday{box-shadow:0 0 0 1.5px var(--rose) inset}
+.mDot{position:absolute; top:3px; right:3px; width:4px; height:4px; border-radius:50%; background:var(--lilac); box-shadow:0 0 0 1px color-mix(in srgb, var(--surface) 70%, transparent)}
 
 .trailCard{background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:18px; box-shadow:var(--sh-sm); display:flex; flex-direction:column; gap:12px}
 .trailEmpty{margin:0; font-size:13px; color:var(--muted); line-height:1.6}
