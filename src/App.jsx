@@ -1091,6 +1091,28 @@ export default function Sukoon() {
     return { days, totalDone, totalJournal, maxDone };
   }, [todos, journal]);
 
+   /* a short reflective line for the week — evenings written, a recurring theme, the lightest day */
+  const weekStory = useMemo(() => {
+    const cutoff = Date.now() - 7 * 86400000;
+    const wk = journal.filter((j) => j.stamp >= cutoff);
+    const bits = [];
+    const eve = wk.filter((j) => new Date(j.stamp).getHours() >= 17).length;
+    if (eve > 0) bits.push(`You paused to write on ${eve} evening${eve === 1 ? "" : "s"}.`);
+    const tagCounts = {};
+    wk.forEach((j) => (j.tags || []).forEach((t) => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
+    const topTag = Object.entries(tagCounts).sort((a, b) => b[1] - a[1])[0];
+    if (topTag && topTag[1] >= 2) bits.push(`The theme you returned to most was “${topTag[0]}”.`);
+    const byDay = {};
+    wk.filter((j) => j.mood).forEach((j) => {
+      const k = new Date(j.stamp).toLocaleDateString("en-IN", { weekday: "long" });
+      const v = MOOD_VALUE[j.mood] || 3;
+      if (!byDay[k] || v > byDay[k]) byDay[k] = v;
+    });
+    const best = Object.entries(byDay).sort((a, b) => b[1] - a[1])[0];
+    if (best && best[1] >= 4) bits.push(`You felt lightest on ${best[0]}.`);
+    return bits;
+  }, [journal]);
+
   /* monthly rollup for the Review screen's Month view */
   const reviewMonthStats = useMemo(() => {
     const now = new Date();
@@ -1232,7 +1254,10 @@ export default function Sukoon() {
                 <p className="eyebrow">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
                 <h1>{GREET[pod]} <em>Pragya</em><span className="period">.</span></h1>
                 <p className="sub">{SUBLINE[pod]}</p>
-                <p className="affirmation"><span className="affirmationMark">✦</span>{dailyAffirmation()}</p>
+               <p className="affirmation"><span className="affirmationMark">✦</span>{dailyAffirmation()}</p>
+                {weekStats.totalDone > 0 && (
+                  <p className="heroPromise">You've kept <b>{weekStats.totalDone}</b> promise{weekStats.totalDone === 1 ? "" : "s"} to yourself this week.{pendingAll.length > 0 ? ` ${pendingAll.length === 1 ? "One gentle intention remains" : `${pendingAll.length} gentle intentions remain`}.` : " The slate is clear."}</p>
+                )}
                 <div className="heroChips">
                   <span className="chip"><b>{pendingAll.length}</b> open intention{pendingAll.length === 1 ? "" : "s"}</span>
                   <span className="chip"><b>{streak}</b> day streak {streak > 0 ? "🌱" : ""}{frozeThisRun && streak > 0 ? " ❄️" : ""}</span>
@@ -1512,7 +1537,7 @@ export default function Sukoon() {
                 <MonthCard offset={monthOffset} setOffset={setMonthOffset} counts={monthCounts} play={play} />
 
                 <div className="trailCard">
-                  <h3>Today's trail</h3>
+                  <h3>Today's moments</h3>
                   {trail.length === 0 ? (
                     <p className="trailEmpty">Moments you complete or keep will gather here, like footprints.</p>
                   ) : (
@@ -1705,6 +1730,13 @@ export default function Sukoon() {
                   <span className="chip"><b>{weekStats.totalJournal}</b> journal entr{weekStats.totalJournal === 1 ? "y" : "ies"}</span>
                   <span className="chip"><b>{streak}</b> day streak {streak > 0 ? "🌱" : ""}</span>
                 </div>
+
+                 {weekStory.length > 0 && (
+                  <div className="weekStory">
+                    {weekStory.map((line, i) => <p key={i} className="weekStoryLine">{line}</p>)}
+                    <p className="weekStoryClose">Keep protecting your peace.</p>
+                  </div>
+                )}
 
                 <div className="reviewCard">
                   <h3>Days, at a glance</h3>
@@ -2025,6 +2057,16 @@ function GardenCard({ sprouts, flowers, kept, totalEver, streak, pod }) {
               </g>
             );
           })}
+           {Array.from({ length: Math.min(2, kept) }).map((_, i) => {
+            const bx = 62 + i * 46, by = 42 + (i % 2) * 12;
+            return (
+              <g key={"b" + i} className="gflutter" style={{ animationDelay: (i * 0.8) + "s" }}>
+                <ellipse cx={bx - 3.2} cy={by} rx="3.4" ry="2.4" fill="var(--lilac)" opacity="0.85" transform={`rotate(-24 ${bx - 3.2} ${by})`} />
+                <ellipse cx={bx + 3.2} cy={by} rx="3.4" ry="2.4" fill="var(--rose)" opacity="0.85" transform={`rotate(24 ${bx + 3.2} ${by})`} />
+                <line x1={bx} y1={by - 2.4} x2={bx} y2={by + 2.4} stroke="var(--ink)" strokeWidth="0.9" opacity="0.5" />
+              </g>
+            );
+          })}
           {grown === 0 && <circle cx="113" cy="106" r="2.4" fill="var(--faint)" />}
         </svg>
       </div>
@@ -2285,7 +2327,11 @@ h1 em{color:var(--moss)}
   filter:blur(.4px); box-shadow:var(--sh), inset 0 2px 14px rgba(255,255,255,.35);
   transform:scale(.72); transition-property:transform; transition-timing-function:cubic-bezier(.45,0,.35,1);
   animation:idlePulse 5.5s ease-in-out infinite}
-.orbStageBig .orb{animation:none; width:210px; height:210px}
+.orbStageBig .orb{animation:orbGlow 5.5s ease-in-out infinite; width:210px; height:210px}
+@keyframes orbGlow{
+  0%,100%{box-shadow:var(--sh), inset 0 2px 14px rgba(255,255,255,.35), 0 0 46px 8px color-mix(in srgb, var(--pollen) 24%, transparent)}
+  50%{box-shadow:var(--sh), inset 0 2px 14px rgba(255,255,255,.35), 0 0 74px 18px color-mix(in srgb, var(--rose) 30%, transparent)}
+}
 @keyframes idlePulse{0%,100%{transform:scale(.7)}50%{transform:scale(.78)}}
 .orbCore{position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:4px; pointer-events:none; text-align:center}
 .orbPhase{font-family:'Instrument Serif',serif; font-size:20px; font-style:italic; color:var(--ink); text-shadow:0 1px 8px color-mix(in srgb, var(--bg) 70%, transparent)}
@@ -2758,4 +2804,20 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 }
 .tipWrap{display:inline-flex; position:relative}
 @keyframes tipIn{from{opacity:0; transform:translateX(-50%) translateY(4px)}to{opacity:1; transform:translateX(-50%) translateY(0)}}
+.tipWrap{display:inline-flex; position:relative}
+@keyframes tipIn{from{opacity:0; transform:translateX(-50%) translateY(4px)}to{opacity:1; transform:translateX(-50%) translateY(0)}}
+
+/* review week story */
+.weekStory{background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--moss); border-radius:18px; padding:16px 20px; box-shadow:var(--sh-sm); display:flex; flex-direction:column; gap:8px}
+.weekStoryLine{margin:0; font-family:'Instrument Serif',serif; font-size:17px; line-height:1.55; color:var(--ink)}
+.weekStoryClose{margin:4px 0 0; font-size:13px; font-style:italic; color:var(--muted)}
+
+/* hero promise line */
+.heroPromise{margin:12px 0 2px; font-size:15px; line-height:1.6; color:var(--muted); max-width:46ch}
+.heroPromise b{color:var(--moss-deep); font-weight:650; font-variant-numeric:tabular-nums}
+@media (max-width:900px){ .heroPromise{margin-left:auto; margin-right:auto; text-align:center} }
+
+/* garden butterflies */
+.gflutter{transform-box:fill-box; transform-origin:center; animation:gflutterMove 6s ease-in-out infinite}
+@keyframes gflutterMove{0%,100%{transform:translate(0,0) rotate(-4deg)}50%{transform:translate(7px,-9px) rotate(4deg)}}
 `;
