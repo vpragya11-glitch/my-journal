@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { createClient } from "@supabase/supabase-js";
 
 /* ─────────────────────────────  SUKOON  ─────────────────────────────
    A gentle day studio for Pragya — wellness-grade calm, premium craft.
@@ -10,6 +11,52 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 ────────────────────────────────────────────────────────────────────── */
 
 const STORAGE_KEY = "pragya-sukoon-v4";
+/* ── Supabase: fill these from Project Settings → API ── */
+const SUPABASE_URL = "https://oisozouzbqvjjkmazxlf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pc296b3V6YnF2amprbWF6eGxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0MDI1NDEsImV4cCI6MjA5ODk3ODU0MX0.yt7JLodhuNpXw5mAveYCV-k5gvONVWfS_zzfn-1hJi4";
+const supabase = (SUPABASE_URL.startsWith("https://") && !SUPABASE_ANON_KEY.startsWith("YOUR-"))
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+/* storage adapter — Supabase when configured, then window.storage (inside Claude),
+   then localStorage, then memory. A local copy is always kept, so a dropped network
+   never loses a save and the app still works offline. */
+const localLayer = (() => {
+  if (typeof window !== "undefined" && window.storage && window.storage.get) return window.storage;
+  const mem = {};
+  const ls = (() => {
+    try { const k = "__sk_test__"; window.localStorage.setItem(k, "1"); window.localStorage.removeItem(k); return window.localStorage; }
+    catch (e) { return null; }
+  })();
+  return {
+    async get(key) { if (ls) { const v = ls.getItem(key); return v == null ? null : { value: v }; } return key in mem ? { value: mem[key] } : null; },
+    async set(key, value) { if (ls) { try { ls.setItem(key, value); } catch (e) {} } else { mem[key] = value; } return { key, value }; },
+  };
+})();
+
+const store = {
+  async get(key) {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from("sukoon_store").select("value").eq("key", key).maybeSingle();
+        if (error) throw error;
+        if (data) { await localLayer.set(key, data.value); return { value: data.value }; }
+        return null;
+      } catch (e) { console.warn("Supabase read failed — using local copy", e); }
+    }
+    return localLayer.get(key);
+  },
+  async set(key, value) {
+    await localLayer.set(key, value); // always keep a local copy first
+    if (supabase) {
+      try {
+        const { error } = await supabase.from("sukoon_store").upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+        if (error) throw error;
+      } catch (e) { console.warn("Supabase write failed — saved locally", e); }
+    }
+    return { key, value };
+  },
+};
 
 /* ── sound: soft, felt, never sharp ─────────────────────────────── */
 let audioCtx = null;
