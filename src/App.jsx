@@ -208,6 +208,20 @@ const SUBLINE = {
   night: "Nothing is urgent now. Rest is also progress.",
 };
 
+/* season — central-India calendar seasons, an accent that turns with the year */
+const SEASONS = {
+  spring: { icon: "🌼" }, summer: { icon: "☀️" }, monsoon: { icon: "🌧" },
+  autumn: { icon: "🍂" }, winter: { icon: "❄️" },
+};
+const seasonOf = () => {
+  const m = new Date().getMonth();
+  if (m === 11 || m === 0) return "winter";
+  if (m === 1 || m === 2) return "spring";
+  if (m >= 3 && m <= 5) return "summer";
+  if (m >= 6 && m <= 8) return "monsoon";
+  return "autumn";
+};
+
 const MOODS = [
   ["🌧️", "heavy", 1], ["🌫️", "foggy", 2], ["🌿", "steady", 3], ["☀️", "light", 4], ["✨", "bright", 5],
 ];
@@ -1158,6 +1172,7 @@ export default function Sukoon() {
     return { sprouts, flowers, kept, totalEver };
   }, [todos, journal, pocket]);
   const pod = partOfDay();
+   const season = seasonOf();
    /* the day's last logged mood gently tints the room — personal signal over clock */
   const moodKey = useMemo(() => {
     const latest = [...journal].filter((j) => j.mood && isToday(j.stamp)).sort((a, b) => b.stamp - a.stamp)[0];
@@ -1181,7 +1196,7 @@ export default function Sukoon() {
 
   if (!loaded) {
     return (
-      <div className="sk" data-theme={theme} data-pod={pod}>
+      <div className="sk" data-theme={theme} data-pod={pod} data-season={season}>
         <style>{CSS}</style>
         <div className="skeleton">
           <div className="skelTop">
@@ -1205,7 +1220,7 @@ export default function Sukoon() {
   }
 
   return (
-    <div className="sk" data-theme={theme} data-pod={pod} data-mood={moodKey}>
+    <div className="sk" data-theme={theme} data-pod={pod} data-mood={moodKey} data-season={season}>
       <style>{CSS}</style>
 
       {/* ── header ── */}
@@ -1251,7 +1266,7 @@ export default function Sukoon() {
           <>
             <section className="hero">
               <div className="heroText">
-                <p className="eyebrow">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
+                <p className="eyebrow">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })} <span className="seasonTag">· {SEASONS[season].icon} {season}</span></p>
                 <h1>{GREET[pod]} <em>Pragya</em><span className="period">.</span></h1>
                 <p className="sub">{SUBLINE[pod]}</p>
                <p className="affirmation"><span className="affirmationMark">✦</span>{dailyAffirmation()}</p>
@@ -2003,6 +2018,13 @@ function GardenCard({ sprouts, flowers, kept, totalEver, streak, pod }) {
   const flowerX = [158, 180, 202];
   const isNight = pod === "night" || pod === "evening";
   const grown = S + F + Math.min(2, kept);
+   const maturity = totalEver >= 160 ? 4 : totalEver >= 71 ? 3 : totalEver >= 25 ? 2 : totalEver >= 8 ? 1 : 0;
+  const MATURITY_NAME = ["a bare bed", "a first seedling", "a young sapling", "a growing tree", "a flourishing garden"][maturity];
+  const trunkTop = [102, 90, 74, 56, 40][maturity];
+  const canopyR = [0, 5, 10, 15, 20][maturity];
+  const tuftCount = [2, 5, 8, 11, 15][maturity];
+  const tufts = Array.from({ length: tuftCount }).map((_, i) => 12 + (i * 202) / Math.max(1, tuftCount - 1) + (i % 2 ? 3 : -3));
+  const wilds = maturity >= 4 ? [40, 96, 150, 190] : maturity >= 3 ? [70, 176] : [];
 
   let caption;
   if (grown === 0) caption = "Your garden is resting. One small thing will wake it.";
@@ -2016,7 +2038,7 @@ function GardenCard({ sprouts, flowers, kept, totalEver, streak, pod }) {
     <div className="gardenCard">
       <div className="gardenHead">
         <h3>Your garden</h3>
-        <span className="gardenTotal">🌱 {totalEver} tended in all</span>
+        <span className="gardenTotal">🌱 {totalEver} tended · {MATURITY_NAME}</span>
       </div>
       <div className="gardenScene">
         <svg viewBox="0 0 226 122" className="gardenSvg" aria-label="A small garden that grows as you tend to your day">
@@ -2031,6 +2053,27 @@ function GardenCard({ sprouts, flowers, kept, totalEver, streak, pod }) {
           {isNight && <circle cx="193" cy="23" r="12" fill="var(--surface)" opacity="0.7" />}
           <path d="M0 96 Q 56 82 118 92 T 226 88 L226 122 L0 122 Z" fill="var(--moss-soft)" />
           <path d="M0 104 Q 60 96 120 102 T 226 100 L226 122 L0 122 Z" fill="var(--moss)" opacity="0.28" />
+           {tufts.map((x, i) => (
+            <path key={"tuft" + i} d={`M${x} 106 q -2 -6 -3 -9 M${x} 106 q 0 -7 0 -10 M${x} 106 q 2 -6 3 -9`}
+              stroke="var(--moss)" strokeWidth="1.2" fill="none" strokeLinecap="round" opacity="0.5" />
+          ))}
+          {maturity === 0 ? (
+            <g><ellipse cx="113" cy="104" rx="10" ry="3" fill="var(--moss-soft)" /><circle cx="113" cy="101" r="2" fill="var(--moss-deep)" opacity="0.6" /></g>
+          ) : (
+            <g className="gtree">
+              <path d={`M113 104 L113 ${trunkTop + canopyR - 2}`} stroke="var(--moss-deep)" strokeWidth={maturity >= 3 ? 3 : 2} strokeLinecap="round" />
+              <circle cx="113" cy={trunkTop} r={canopyR} fill="var(--moss)" opacity="0.9" />
+              <circle cx={113 - canopyR * 0.6} cy={trunkTop + canopyR * 0.35} r={canopyR * 0.72} fill="var(--moss)" opacity="0.85" />
+              <circle cx={113 + canopyR * 0.6} cy={trunkTop + canopyR * 0.3} r={canopyR * 0.72} fill="var(--moss-deep)" opacity="0.7" />
+              <circle cx="113" cy={trunkTop - canopyR * 0.5} r={canopyR * 0.66} fill="var(--moss)" opacity="0.8" />
+            </g>
+          )}
+          {wilds.map((x, i) => (
+            <g key={"wild" + i}>
+              <line x1={x} y1="104" x2={x} y2="98" stroke="var(--moss)" strokeWidth="1" />
+              <circle cx={x} cy="97" r="2.2" fill={["var(--rose)", "var(--lilac)", "var(--pollen)"][i % 3]} />
+            </g>
+          ))}
           {Array.from({ length: S }).map((_, i) => {
             const x = sproutX[i];
             return (
@@ -2238,6 +2281,7 @@ const CSS = String.raw`
   min-height:100vh; font-family:'Instrument Sans',sans-serif; color:var(--ink); font-size:15px;
   position:relative;
   background:
+    radial-gradient(1000px 360px at 12% -8%, color-mix(in srgb, var(--season) 16%, transparent) 0%, transparent 58%),
     radial-gradient(760px 460px at 50% -10%, color-mix(in srgb, var(--atmos) calc(var(--atmos-o) * 100%), transparent) 0%, transparent 62%),
     radial-gradient(900px 520px at 85% -12%, color-mix(in srgb, var(--orb2) 38%, transparent) 0%, transparent 62%),
     radial-gradient(760px 520px at -10% 30%, color-mix(in srgb, var(--orb1) 42%, transparent) 0%, transparent 60%),
@@ -2732,7 +2776,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 /* daily affirmation — a larger, quieter line beneath the greeting */
 .affirmation{margin:16px 0 2px; font-family:'Instrument Serif',serif; font-style:italic; font-size:clamp(17px,2vw,20px);
   line-height:1.5; color:var(--moss-deep); display:flex; align-items:baseline; gap:9px; max-width:42ch}
-.affirmationMark{font-style:normal; font-size:12px; color:var(--pollen); flex:none; transform:translateY(-1px)}
+.affirmationMark{font-style:normal; font-size:12px; color:var(--season); flex:none; transform:translateY(-1px)}
 
 /* the garden — a featured, tinted card so it reads apart from the plain surfaces */
 .gardenCard{position:relative; background:linear-gradient(165deg, color-mix(in srgb, var(--moss-soft) 55%, var(--surface)) 0%, var(--surface) 62%);
@@ -2820,4 +2864,20 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 /* garden butterflies */
 .gflutter{transform-box:fill-box; transform-origin:center; animation:gflutterMove 6s ease-in-out infinite}
 @keyframes gflutterMove{0%,100%{transform:translate(0,0) rotate(-4deg)}50%{transform:translate(7px,-9px) rotate(4deg)}}
+
+/* seasonal accent — orthogonal tint, central-India calendar */
+.sk[data-season="spring"]{ --season:#8FB86A; --season-soft:#E7F0DB; }
+.sk[data-season="summer"]{ --season:#E0A54B; --season-soft:#F6EBD1; }
+.sk[data-season="monsoon"]{ --season:#5E86A8; --season-soft:#DEE8EF; }
+.sk[data-season="autumn"]{ --season:#C0764A; --season-soft:#F1E2D4; }
+.sk[data-season="winter"]{ --season:#8093B8; --season-soft:#E4E9F1; }
+.sk[data-theme="dusk"][data-season="spring"]{ --season-soft:#26311F; }
+.sk[data-theme="dusk"][data-season="summer"]{ --season-soft:#332916; }
+.sk[data-theme="dusk"][data-season="monsoon"]{ --season-soft:#1E2A33; }
+.sk[data-theme="dusk"][data-season="autumn"]{ --season-soft:#33231A; }
+.sk[data-theme="dusk"][data-season="winter"]{ --season-soft:#232838; }
+.seasonTag{color:var(--season); font-weight:650; text-transform:capitalize; letter-spacing:.04em}
+
+/* the aging tree sways slower and gentler than the day's sprouts */
+.gtree{transform-box:fill-box; transform-origin:bottom center; animation:gsway 7.5s ease-in-out infinite}
 `;
