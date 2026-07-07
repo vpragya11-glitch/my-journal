@@ -93,7 +93,59 @@ const PROMPTS = [
   "If today had a colour, what would it be — and why?",
 ];
 const dayOfYear = () => { const d = new Date(); return Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000); };
-const dailyPrompt = () => PROMPTS[dayOfYear() % PROMPTS.length];
+const EVENING_PROMPTS = [
+  "What made you smile today?",
+  "What challenged you, and how did you meet it?",
+  "What are you quietly proud of?",
+  "What can you forgive yourself for tonight?",
+  "What would you like to carry into tomorrow?",
+];
+const dailyPrompt = () => {
+  const p = partOfDay();
+  const pool = (p === "evening" || p === "night") ? EVENING_PROMPTS : PROMPTS;
+  return pool[dayOfYear() % pool.length];
+};
+
+/* gentle affirmations — a line to open the day, softer ones to close it */
+const AFFIRMATIONS = [
+  "The way you spend your morning shapes your day.",
+  "Progress over perfection, always.",
+  "You're allowed to move at your own pace.",
+  "Small steps, taken gently, still arrive.",
+  "Begin where you are — that's always enough.",
+  "You don't have to earn your own kindness.",
+  "The quiet things count too.",
+  "You've carried harder days than this one.",
+];
+const EVENING_AFFIRMATIONS = [
+  "You did enough today. Let the rest be.",
+  "The day is closing — you can set it down now.",
+  "Whatever got done, got done. That's alright.",
+  "Softness at the end of the day is well earned.",
+  "Tomorrow will ask for you gently. Rest first.",
+];
+const dailyAffirmation = () => {
+  const p = partOfDay();
+  const pool = (p === "evening" || p === "night") ? EVENING_AFFIRMATIONS : AFFIRMATIONS;
+  return pool[dayOfYear() % pool.length];
+};
+
+/* little lines that celebrate a small win, chosen at random */
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const DONE_LINES = [
+  "One less thing on your mind.",
+  "That's done. Breathe out.",
+  "Gently done — well done.",
+  "A little lighter now.",
+  "Off your plate, off your mind.",
+  "That one's behind you now.",
+];
+const JOURNAL_LINES = [
+  "Kept safe in your journal.",
+  "Written down, and set down.",
+  "Sometimes, writing is enough.",
+  "That thought has a home now.",
+];
 
 /* a wider pool of gentle starters, three rotate in each day */
 const STARTER_POOL = [
@@ -221,6 +273,8 @@ export default function Sukoon() {
   const [todos, setTodos] = useState([]);
   const [journal, setJournal] = useState([]);
   const [pocket, setPocket] = useState([]);
+   const [gratitude, setGratitude] = useState([]);
+  const [gratDraft, setGratDraft] = useState(["", "", ""]);
   const [soundOn, setSoundOn] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null); // { msg, undo }
@@ -283,6 +337,7 @@ export default function Sukoon() {
         if (res && res.value) {
           const d = JSON.parse(res.value);
           setTodos(d.todos || []); setJournal(d.journal || []); setPocket(d.pocket || []);
+          setGratitude(d.gratitude || []);
           if (typeof d.soundOn === "boolean") setSoundOn(d.soundOn);
           if (d.theme) setTheme(d.theme);
           found = true;
@@ -320,11 +375,11 @@ export default function Sukoon() {
   useEffect(() => {
     if (!loaded) return;
     const t = setTimeout(async () => {
-      try { await window.storage.set(STORAGE_KEY, JSON.stringify({ todos, journal, pocket, soundOn, theme })); }
+      try { await window.storage.set(STORAGE_KEY, JSON.stringify({ todos, journal, pocket, gratitude, soundOn, theme })); }
       catch (e) { console.error("save failed", e); }
     }, 400);
     return () => clearTimeout(t);
-  }, [todos, journal, pocket, soundOn, theme, loaded]);
+  }, [todos, journal, pocket, gratitude, soundOn, theme, loaded]);
 
   /* schedule gentle reminder notifications for intentions with a time set,
      while this tab stays open — browsers don't allow background delivery otherwise */
@@ -419,6 +474,9 @@ export default function Sukoon() {
   };
   const toggleTodo = (id) => {
     const tk = dayKey(Date.now());
+    const item = todos.find((x) => x.id === id);
+    const willComplete = item ? (isRecurringItem(item) ? !(item.doneDays || []).includes(tk) : !item.done) : false;
+    const pendingBefore = todos.filter((t) => (t.bucket || "today") === "today" && !t.done).length;
     setTodos((t) => t.map((x) => {
       if (x.id !== id) return x;
       if (isRecurringItem(x)) {
@@ -431,6 +489,9 @@ export default function Sukoon() {
       play(x.done ? "uncheck" : "check");
       return { ...x, done: !x.done, doneAt: !x.done ? Date.now() : null };
     }));
+    /* a gentle word for finishing something — but stay quiet on the last one,
+       so the full-day celebration keeps the stage to itself */
+    if (willComplete && pendingBefore > 1) flash(pick(DONE_LINES));
   };
   const removeTodo = (id) => {
     const item = todos.find((x) => x.id === id);
@@ -631,7 +692,7 @@ export default function Sukoon() {
     if (entryTagInput.trim()) entryTagInput.split(",").forEach((p) => { tags = addTagUnique(tags, p); });
     setJournal((j) => [{ id: uid(), stamp: Date.now(), mood: entryMood, text: v, prompt: dailyPrompt(), tags }, ...j]);
     setEntryText(""); setEntryMood(null); setEntryTags([]); setEntryTagInput("");
-    play("save"); flash("Kept safe in your journal");
+    play("save"); flash(pick(JOURNAL_LINES));
   };
   const removeEntry = (id) => {
     const item = journal.find((x) => x.id === id);
@@ -673,7 +734,7 @@ export default function Sukoon() {
   };
 
   const exportAllData = () => {
-    const payload = { version: 1, exportedAt: Date.now(), todos, journal, pocket, soundOn, theme };
+   const payload = { version: 1, exportedAt: Date.now(), todos, journal, pocket, gratitude, soundOn, theme };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -696,10 +757,24 @@ export default function Sukoon() {
         setTodos((cur) => { const r = mergeById(cur, d.todos); totalAdded += r.added || 0; return r.list; });
         setJournal((cur) => { const r = mergeById(cur, d.journal); totalAdded += r.added || 0; return r.list; });
         setPocket((cur) => { const r = mergeById(cur, d.pocket); totalAdded += r.added || 0; return r.list; });
+        setGratitude((cur) => { const r = mergeById(cur, d.gratitude); totalAdded += r.added || 0; return r.list; });
         flash(totalAdded > 0 ? `Merged ${totalAdded} item${totalAdded === 1 ? "" : "s"} from backup` : "Backup already up to date");
       } catch (err) { flash("That file couldn't be read"); }
     };
     reader.readAsText(file);
+  };
+   /* gratitude — three small things, captured for today */
+  const todaysGratitude = gratitude.filter((g) => isToday(g.stamp));
+  const setGratDraftAt = (i, v) => setGratDraft((d) => { const n = [...d]; n[i] = v; return n; });
+  const commitGratitude = (i) => {
+    const text = (gratDraft[i] || "").trim(); if (!text) return;
+    setGratitude((g) => [...g, { id: uid(), text, stamp: Date.now() }]);
+    setGratDraft((d) => d.filter((_, idx) => idx !== i));
+    play("tap"); flash("Noted, with thanks");
+  };
+  const removeGratitude = (id) => {
+    setGratitude((g) => g.filter((x) => x.id !== id));
+    play("delete");
   };
 
   const savePocket = () => {
@@ -901,7 +976,17 @@ export default function Sukoon() {
     ...journal.filter((j) => isToday(j.stamp)).map((j) => ({ id: "j" + j.id, stamp: j.stamp, kind: "journal", text: "Wrote in your journal" })),
     ...pocket.filter((p) => isToday(p.stamp)).map((p) => ({ id: "p" + p.id, stamp: p.stamp, kind: "pocket", text: "Kept: " + p.title })),
   ].sort((a, b) => b.stamp - a.stamp).slice(0, 6), [todos, journal, pocket]);
-
+/* the garden — what today's small acts have grown, plus the all-time count */
+  const garden = useMemo(() => {
+    const tk = dayKey(Date.now());
+    const sprouts = todos.reduce((s, t) => s + (isRecurringItem(t)
+      ? ((t.doneDays || []).includes(tk) ? 1 : 0)
+      : (t.done && t.doneAt && isToday(t.doneAt) ? 1 : 0)), 0);
+    const flowers = journal.filter((j) => isToday(j.stamp)).length;
+    const kept = pocket.filter((p) => isToday(p.stamp)).length;
+    const totalEver = todos.reduce((s, t) => s + (isRecurringItem(t) ? (t.doneDays || []).length : (t.doneAt ? 1 : 0)), 0) + journal.length;
+    return { sprouts, flowers, kept, totalEver };
+  }, [todos, journal, pocket]);
   const pod = partOfDay();
 
   /* completion celebration — fires once, only on the transition into "all done" */
@@ -993,6 +1078,7 @@ export default function Sukoon() {
                 <p className="eyebrow">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
                 <h1>{GREET[pod]} <em>Pragya</em><span className="period">.</span></h1>
                 <p className="sub">{SUBLINE[pod]}</p>
+                <p className="affirmation"><span className="affirmationMark">✦</span>{dailyAffirmation()}</p>
                 <div className="heroChips">
                   <span className="chip"><b>{pendingAll.length}</b> open intention{pendingAll.length === 1 ? "" : "s"}</span>
                   <span className="chip"><b>{streak}</b> day streak {streak > 0 ? "🌱" : ""}{frozeThisRun && streak > 0 ? " ❄️" : ""}</span>
@@ -1264,6 +1350,8 @@ export default function Sukoon() {
                     <span>{pct === 100 && todayTodos.length ? "The day is full. Well walked." : pct >= 60 ? "Softly, steadily — nearly there." : pct > 0 ? "One small step at a time." : "The page is still fresh."}</span>
                   </div>
                 </div>
+                 <GardenCard sprouts={garden.sprouts} flowers={garden.flowers} kept={garden.kept}
+                  totalEver={garden.totalEver} streak={streak} pod={pod} />
 
                 <MonthCard offset={monthOffset} setOffset={setMonthOffset} counts={monthCounts} play={play} />
 
@@ -1299,6 +1387,24 @@ export default function Sukoon() {
               <p className="eyebrow">Today's prompt</p>
               <h1 className="prompt"><em>{dailyPrompt()}</em></h1>
               {journal.length > 0 && <button className="exportLink" onClick={exportJournal}>Export journal ↓</button>}
+            </div>
+
+             <div className="gratitudeCard">
+              <p className="gratitudeLabel">Today I'm grateful for</p>
+              <div className="gratitudeSlots">
+                {todaysGratitude.map((g) => (
+                  <span key={g.id} className="gratChip"><span>🌾 {g.text}</span>
+                    <button onClick={() => removeGratitude(g.id)} aria-label="Remove">×</button></span>
+                ))}
+                {Array.from({ length: Math.max(0, 3 - todaysGratitude.length) }).map((_, i) => (
+                  <input key={"g" + i} className="gratInput" value={gratDraft[i] || ""}
+                    onChange={(e) => setGratDraftAt(i, e.target.value)}
+                    onKeyDown={(e) => { keySound(e); if (e.key === "Enter") commitGratitude(i); }}
+                    onBlur={() => (gratDraft[i] || "").trim() && commitGratitude(i)}
+                    placeholder={["something small…", "someone…", "a moment…"][todaysGratitude.length + i] || "something…"}
+                    aria-label="Something you're grateful for" />
+                ))}
+              </div>
             </div>
 
             {onThisDay && (
@@ -1683,6 +1789,76 @@ function OrbVisual({ step, running, cur, phaseIdx, breaths, compact, patternLabe
         )}
       </div>
     </>
+  );
+}
+
+/* ═══ the garden — a small living scene that grows with the day (Finch-style loop) ═══ */
+function GardenCard({ sprouts, flowers, kept, totalEver, streak, pod }) {
+  const S = Math.min(6, sprouts);
+  const F = Math.min(3, flowers);
+  const sproutX = [24, 46, 68, 90, 112, 134];
+  const flowerX = [158, 180, 202];
+  const isNight = pod === "night" || pod === "evening";
+  const grown = S + F + Math.min(2, kept);
+
+  let caption;
+  if (grown === 0) caption = "Your garden is resting. One small thing will wake it.";
+  else if (F > 0 && S > 0) caption = "Sprouting and blooming — a good day for it.";
+  else if (F > 0) caption = `${F} flower${F === 1 ? "" : "s"} from today's writing.`;
+  else caption = `${S} sprout${S === 1 ? "" : "s"} today. It's coming alive.`;
+  if (streak >= 7 && grown > 0) caption += " The season has turned lush.";
+
+  const stem = (x, topY) => `M${x} 108 C ${x} 98 ${x} 92 ${x} ${topY}`;
+  return (
+    <div className="gardenCard">
+      <div className="gardenHead">
+        <h3>Your garden</h3>
+        <span className="gardenTotal">🌱 {totalEver} tended in all</span>
+      </div>
+      <div className="gardenScene">
+        <svg viewBox="0 0 226 122" className="gardenSvg" aria-label="A small garden that grows as you tend to your day">
+          <defs>
+            <linearGradient id="gSky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="var(--orb2)" stopOpacity="0.45" />
+              <stop offset="1" stopColor="var(--surface)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="226" height="122" rx="12" fill="url(#gSky)" />
+          <circle cx="198" cy="26" r="12" fill={isNight ? "var(--lilac)" : "var(--pollen)"} opacity="0.85" />
+          {isNight && <circle cx="193" cy="23" r="12" fill="var(--surface)" opacity="0.7" />}
+          <path d="M0 96 Q 56 82 118 92 T 226 88 L226 122 L0 122 Z" fill="var(--moss-soft)" />
+          <path d="M0 104 Q 60 96 120 102 T 226 100 L226 122 L0 122 Z" fill="var(--moss)" opacity="0.28" />
+          {Array.from({ length: S }).map((_, i) => {
+            const x = sproutX[i];
+            return (
+              <g key={"s" + i} className="gplant" style={{ animationDelay: (i * 0.4) + "s", animationDuration: (5 + (i % 3) * 0.6) + "s" }}>
+                <path d={stem(x, 84)} stroke="var(--moss)" strokeWidth="2" fill="none" strokeLinecap="round" />
+                <path d={`M${x} 94 C ${x - 9} 92 ${x - 12} 86 ${x - 12} 84 C ${x - 6} 84 ${x - 1} 88 ${x} 94`} fill="var(--moss)" />
+                <path d={`M${x} 98 C ${x + 8} 96 ${x + 11} 91 ${x + 11} 89 C ${x + 5} 89 ${x + 1} 92 ${x} 98`} fill="var(--moss-deep)" />
+              </g>
+            );
+          })}
+          {Array.from({ length: F }).map((_, i) => {
+            const x = flowerX[i];
+            const c = ["var(--rose)", "var(--lilac)", "var(--pollen)"][i % 3];
+            const topY = 80;
+            return (
+              <g key={"f" + i} className="gplant" style={{ animationDelay: (i * 0.5 + 0.2) + "s", animationDuration: (5.4 + (i % 3) * 0.5) + "s" }}>
+                <path d={stem(x, topY)} stroke="var(--moss)" strokeWidth="2" fill="none" strokeLinecap="round" />
+                <path d={`M${x} 96 C ${x - 8} 95 ${x - 10} 90 ${x - 10} 89 C ${x - 5} 89 ${x - 1} 92 ${x} 96`} fill="var(--moss)" />
+                {[0, 1, 2, 3, 4].map((p) => {
+                  const a = (p / 5) * Math.PI * 2 - Math.PI / 2;
+                  return <circle key={p} cx={x + Math.cos(a) * 5.6} cy={topY + Math.sin(a) * 5.6} r="3.4" fill={c} />;
+                })}
+                <circle cx={x} cy={topY} r="2.6" fill="var(--pollen)" />
+              </g>
+            );
+          })}
+          {grown === 0 && <circle cx="113" cy="106" r="2.4" fill="var(--faint)" />}
+        </svg>
+      </div>
+      <p className="gardenCaption">{caption}</p>
+    </div>
   );
 }
 
@@ -2336,6 +2512,36 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
   .secHeadRight{width:100%; justify-content:space-between}
   .subPanel{margin-left:0}
 }
+/* daily affirmation — a larger, quieter line beneath the greeting */
+.affirmation{margin:16px 0 2px; font-family:'Instrument Serif',serif; font-style:italic; font-size:clamp(17px,2vw,20px);
+  line-height:1.5; color:var(--moss-deep); display:flex; align-items:baseline; gap:9px; max-width:42ch}
+.affirmationMark{font-style:normal; font-size:12px; color:var(--pollen); flex:none; transform:translateY(-1px)}
+
+/* the garden — a featured, tinted card so it reads apart from the plain surfaces */
+.gardenCard{position:relative; background:linear-gradient(165deg, color-mix(in srgb, var(--moss-soft) 55%, var(--surface)) 0%, var(--surface) 62%);
+  border:1px solid var(--border); border-radius:22px; padding:16px 18px 14px; box-shadow:var(--sh-sm); display:flex; flex-direction:column; gap:10px; overflow:hidden}
+.gardenHead{display:flex; align-items:center; justify-content:space-between; gap:10px}
+.gardenTotal{font-size:11px; font-weight:600; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap}
+.gardenScene{border-radius:14px; overflow:hidden}
+.gardenSvg{width:100%; height:auto; display:block}
+.gplant{transform-box:fill-box; transform-origin:bottom center; animation:gsway 5.5s ease-in-out infinite}
+@keyframes gsway{0%,100%{transform:rotate(-2.2deg)}50%{transform:rotate(2.2deg)}}
+.gardenCaption{margin:0; font-family:'Instrument Serif',serif; font-style:italic; font-size:14px; line-height:1.5; color:var(--muted)}
+
+/* gratitude — three small things, a warm-tinted card */
+.gratitudeCard{background:linear-gradient(160deg, color-mix(in srgb, var(--pollen-soft) 55%, var(--surface)) 0%, var(--surface) 62%);
+  border:1px solid var(--border); border-radius:20px; padding:15px 18px; box-shadow:var(--sh-sm); display:flex; flex-direction:column; gap:11px}
+.gratitudeLabel{margin:0; font-family:'Instrument Serif',serif; font-style:italic; font-size:16px; color:var(--ink)}
+.gratitudeSlots{display:flex; flex-direction:column; gap:8px}
+.gratInput{border:1px solid var(--border); background:var(--surface2); color:var(--ink); font:400 14px 'Instrument Sans'; padding:9px 14px; border-radius:12px; outline:none}
+.gratInput:focus{border-color:var(--pollen)}
+.gratInput::placeholder{color:var(--faint); font-style:italic; font-family:'Instrument Serif',serif}
+.gratChip{display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--surface2); border:1px solid var(--border);
+  border-radius:12px; padding:9px 12px 9px 14px; font-size:14px; color:var(--ink); animation:rise .3s ease both}
+.gratChip button{border:none; background:transparent; color:var(--faint); font-size:16px; line-height:1; padding:0 4px; flex:none}
+.gratChip button:hover{color:var(--rose-deep)}
+
+@media (max-width:900px){ .affirmation{justify-content:center; text-align:center; margin-left:auto; margin-right:auto} }
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001s !important; transition-duration:.001s !important}
 }
