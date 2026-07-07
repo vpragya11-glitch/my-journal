@@ -1298,8 +1298,10 @@ export default function Sukoon() {
                       onClick={cycleDraftRecur}>🔁 {recurLabel(draftRecur) || "Repeat"}</button>
                     <button className={"cat someday" + (draftBucket === "someday" ? " catOn" : "")} title="Save for later, pull in when ready"
                       onClick={() => { setDraftBucket((b) => (b === "someday" ? "today" : "someday")); play("nav"); }}>🗂 Someday</button>
-                    <input type="time" className="timeIn" value={draftTime} onChange={(e) => setDraftTime(e.target.value)}
-                      data-tip="Optional time — enables calendar export and reminders" aria-label="Optional time" />
+                    <span className="tipWrap" data-tip="Optional time — enables calendar export and reminders">
+  <input type="time" className="timeIn" value={draftTime} onChange={(e) => setDraftTime(e.target.value)}
+    aria-label="Optional time" />
+</span>
                     <input className="tagIn" value={draftTagInput} onChange={(e) => setDraftTagInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); commitDraftTag(); } }}
                       onBlur={() => draftTagInput.trim() && commitDraftTag()}
@@ -2751,6 +2753,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
   content:""; position:absolute; bottom:calc(100% + 4px); left:50%; transform:translateX(-50%);
   border:5px solid transparent; border-top-color:var(--ink); z-index:80; pointer-events:none;
 }
+.tipWrap{display:inline-flex; position:relative}
 @keyframes tipIn{from{opacity:0; transform:translateX(-50%) translateY(4px)}to{opacity:1; transform:translateX(-50%) translateY(0)}}
 }
 `;
