@@ -82,9 +82,22 @@ const tone = (freq, dur = 0.1, vol = 0.06, when = 0, type = "sine") => {
   o.connect(g); g.connect(ctx.destination);
   o.start(t); o.stop(t + dur + 0.05);
 };
+// add this alongside tone()
+const softTone = (freq, dur = 0.08, vol = 0.02) => {
+  const ctx = getCtx(); if (!ctx) return;
+  const t = ctx.currentTime;
+  const o = ctx.createOscillator(); const g = ctx.createGain();
+  o.type = "sine"; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.045);       // slow attack = no click
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(ctx.destination);
+  o.start(t); o.stop(t + dur + 0.05);
+};
+
 const SOUNDS = {
-  type:    () => tone(1900 + Math.random() * 250, 0.03, 0.014, 0, "triangle"),
-  tap:     () => tone(494, 0.08, 0.045),
+  type: () => softTone(650 + Math.random() * 80, 0.09, 0.011),
+  tap: () => tone(392, 0.12, 0.03),
   check:   () => { tone(523, 0.12, 0.05); tone(784, 0.18, 0.045, 0.09); },
   uncheck: () => tone(330, 0.1, 0.04),
   add:     () => { tone(440, 0.09, 0.04); tone(554, 0.13, 0.04, 0.07); },
