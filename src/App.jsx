@@ -49,7 +49,77 @@ const SOUNDS = {
   copy:    () => { tone(659, 0.1, 0.04); tone(880, 0.13, 0.035, 0.08); },
   pop:     () => { tone(700, 0.06, 0.03); tone(900, 0.07, 0.026, 0.04); },
 };
-
+/* ─────────── ambient soundscapes: generated live, so nothing loads over the wire ─────────── */
+const makeNoise = (ctx, secs = 2.2) => {
+  const len = Math.floor(ctx.sampleRate * secs);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < len; i++) { const white = Math.random() * 2 - 1; last = (last + 0.02 * white) / 1.02; d[i] = last * 3.2; }
+  return buf;
+};
+const AMBIENCES = {
+  rain:   { label: "Rain",   icon: "🌧" },
+  forest: { label: "Forest", icon: "🌲" },
+  waves:  { label: "Waves",  icon: "🌊" },
+  hearth: { label: "Hearth", icon: "🔥" },
+};
+function createAmbient() {
+  let ctx = null, master = null, running = null, nodes = [], timers = [];
+  const stopAll = () => {
+    timers.forEach(clearTimeout); timers = [];
+    nodes.forEach((n) => { try { n.stop && n.stop(); } catch (e) {} try { n.disconnect(); } catch (e) {} });
+    nodes = []; running = null;
+  };
+  const ensure = () => {
+    ctx = getCtx(); if (!ctx) return false;
+    if (!master) { master = ctx.createGain(); master.gain.value = 0.5; master.connect(ctx.destination); }
+    return true;
+  };
+  const bed = (type, freq, q, vol, lfoRate, lfoDepth) => {
+    const src = ctx.createBufferSource(); src.buffer = makeNoise(ctx); src.loop = true;
+    const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+    const g = ctx.createGain(); g.gain.value = vol;
+    src.connect(f); f.connect(g); g.connect(master);
+    if (lfoRate) { const lfo = ctx.createOscillator(); lfo.frequency.value = lfoRate; const lg = ctx.createGain(); lg.gain.value = lfoDepth; lfo.connect(lg); lg.connect(g.gain); lfo.start(); nodes.push(lfo, lg); }
+    src.start(); nodes.push(src, f, g); return g;
+  };
+  const blip = (freq, dur, vol, type = "sine") => {
+    const o = ctx.createOscillator(); const g = ctx.createGain(); o.type = type; o.frequency.value = freq;
+    const t = ctx.currentTime; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.04); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.05);
+  };
+  const sprinkle = (make, minGap, maxGap) => {
+    const loop = () => { if (!running) return; make(); timers.push(setTimeout(loop, minGap + Math.random() * (maxGap - minGap))); };
+    timers.push(setTimeout(loop, 800 + Math.random() * 1500));
+  };
+  const start = (scene) => {
+    if (!ensure()) return; stopAll(); running = scene;
+    if (scene === "rain") {
+      bed("lowpass", 1500, 0.6, 0.16);
+      bed("bandpass", 2600, 0.7, 0.05, 0.12, 0.02);
+    } else if (scene === "forest") {
+      bed("lowpass", 900, 0.5, 0.09, 0.08, 0.02);
+      sprinkle(() => { const f = 1600 + Math.random() * 1400; blip(f, 0.12, 0.04); blip(f * 1.5, 0.09, 0.025); }, 2600, 6000);
+    } else if (scene === "waves") {
+      const g = bed("lowpass", 700, 0.4, 0.02);
+      const swell = () => {
+        if (!running) return;
+        const t = ctx.currentTime;
+        g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t);
+        g.gain.linearRampToValueAtTime(0.20, t + 3.2); g.gain.linearRampToValueAtTime(0.05, t + 7.5);
+        timers.push(setTimeout(swell, 7500));
+      };
+      swell();
+    } else if (scene === "hearth") {
+      bed("lowpass", 500, 0.4, 0.12, 0.15, 0.03);
+      sprinkle(() => blip(120 + Math.random() * 180, 0.05, 0.05, "triangle"), 500, 2200);
+    }
+  };
+  return { start, stop: () => stopAll(), setVolume: (v) => { if (master) master.gain.value = v; }, get scene() { return running; } };
+}
+let ambientEngine = null;
+const getAmbient = () => { if (!ambientEngine) ambientEngine = createAmbient(); return ambientEngine; };
 /* ── helpers ─────────────────────────────────────────────────────── */
 const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
 const fmtDay = (ts) => new Date(ts).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
@@ -276,6 +346,7 @@ export default function Sukoon() {
    const [gratitude, setGratitude] = useState([]);
   const [gratDraft, setGratDraft] = useState(["", "", ""]);
   const [soundOn, setSoundOn] = useState(true);
+   const [ambient, setAmbient] = useState(null); // active scene key, or null
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null); // { msg, undo }
   const [celebrate, setCelebrate] = useState(false);
@@ -318,6 +389,12 @@ export default function Sukoon() {
 
   const soundRef = useRef(true); soundRef.current = soundOn;
   const play = useCallback((n) => { if (soundRef.current && SOUNDS[n]) SOUNDS[n](); }, []);
+   const toggleAmbient = (scene) => {
+    const eng = getAmbient();
+    if (ambient === scene) { eng.stop(); setAmbient(null); play("tap"); return; }
+    eng.start(scene); setAmbient(scene); play("nav");
+  };
+  useEffect(() => () => { if (ambientEngine) ambientEngine.stop(); }, []);
 
   const todoInputRef = useRef(null);
   const journalTextRef = useRef(null);
@@ -988,6 +1065,12 @@ export default function Sukoon() {
     return { sprouts, flowers, kept, totalEver };
   }, [todos, journal, pocket]);
   const pod = partOfDay();
+   /* the day's last logged mood gently tints the room — personal signal over clock */
+  const moodKey = useMemo(() => {
+    const latest = [...journal].filter((j) => j.mood && isToday(j.stamp)).sort((a, b) => b.stamp - a.stamp)[0];
+    if (!latest) return "none";
+    return { "🌧️": "heavy", "🌫️": "foggy", "🌿": "steady", "☀️": "light", "✨": "bright" }[latest.mood] || "none";
+  }, [journal]);
 
   /* completion celebration — fires once, only on the transition into "all done" */
   const prevAllDoneRef = useRef(false);
@@ -1029,7 +1112,7 @@ export default function Sukoon() {
   }
 
   return (
-    <div className="sk" data-theme={theme} data-pod={pod}>
+    <div className="sk" data-theme={theme} data-pod={pod} data-mood={moodKey}>
       <style>{CSS}</style>
 
       {/* ── header ── */}
@@ -1370,6 +1453,21 @@ export default function Sukoon() {
                       ))}
                     </ul>
                   )}
+                </div>
+                 <div className="ambientCard">
+                  <div className="ambientHead">
+                    <h3>Ambience</h3>
+                    {ambient && <button className="ambientStop" onClick={() => toggleAmbient(ambient)}>Stop</button>}
+                  </div>
+                  <div className="ambientRow">
+                    {Object.entries(AMBIENCES).map(([k, a]) => (
+                      <button key={k} className={"ambientChip" + (ambient === k ? " ambientOn" : "")}
+                        onClick={() => toggleAmbient(k)} aria-pressed={ambient === k} title={`Play ${a.label}`}>
+                        <span className="ambientIcon">{a.icon}</span>{a.label}
+                        {ambient === k && <i className="ambientWave" />}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="noteCard">
@@ -2542,6 +2640,30 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .gratChip button:hover{color:var(--rose-deep)}
 
 @media (max-width:900px){ .affirmation{justify-content:center; text-align:center; margin-left:auto; margin-right:auto} }
+/* ambient soundscapes */
+.ambientCard{background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:16px 18px; box-shadow:var(--sh-sm); display:flex; flex-direction:column; gap:11px}
+.ambientHead{display:flex; align-items:center; justify-content:space-between}
+.ambientStop{border:1px solid var(--border); background:transparent; color:var(--muted); font-size:11px; font-weight:600; padding:4px 12px; border-radius:999px; transition:all .2s}
+.ambientStop:hover{color:var(--rose-deep); border-color:var(--rose)}
+.ambientRow{display:grid; grid-template-columns:1fr 1fr; gap:7px}
+.ambientChip{position:relative; display:flex; align-items:center; gap:7px; border:1px solid var(--border); background:var(--surface2); color:var(--muted);
+  font-size:12.5px; font-weight:550; padding:9px 13px; border-radius:12px; transition:all .2s}
+.ambientChip:hover{border-color:var(--border2); color:var(--ink)}
+.ambientIcon{font-size:14px}
+.ambientChip.ambientOn{background:var(--moss-soft); border-color:var(--moss); color:var(--moss-deep)}
+.ambientWave{position:absolute; right:11px; width:6px; height:6px; border-radius:50%; background:var(--moss); animation:ambientPulse 1.6s ease-in-out infinite}
+@keyframes ambientPulse{0%,100%{opacity:.35; transform:scale(.8)}50%{opacity:1; transform:scale(1.15)}}
+/* mood-adaptive atmosphere — overrides the time-of-day tint only when a mood is logged today.
+   Placed after the [data-pod] rules so it wins by source order at equal specificity. */
+.sk[data-mood="bright"]{ --atmos:#EDDA9E; --atmos-o:.34; }
+.sk[data-mood="light"]{ --atmos:#F3C9A8; --atmos-o:.30; }
+.sk[data-mood="steady"]{ --atmos:#BCD3AE; --atmos-o:.24; }
+.sk[data-mood="foggy"]{ --atmos:#C4BCDD; --atmos-o:.16; }
+.sk[data-mood="heavy"]{ --atmos:#8D84B5; --atmos-o:.20; }
+/* heavier days ask for a calmer room: slow the breathing orb, soften the drift */
+.sk[data-mood="heavy"] .orb, .sk[data-mood="foggy"] .orb{ animation-duration:8s }
+.sk[data-mood="heavy"] .orbHalo{ animation-duration:64s; opacity:.5 }
+.sk[data-mood="heavy"] .petal{ opacity:.55 }
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001s !important; transition-duration:.001s !important}
 }
