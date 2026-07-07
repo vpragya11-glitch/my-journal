@@ -1637,10 +1637,12 @@ export default function Sukoon() {
             <div className="jHero">
               <p className="eyebrow">Today's prompt</p>
               <h1 className="prompt"><em>{dailyPrompt()}</em></h1>
-              {journal.length > 0 && <button className="exportLink" onClick={exportJournal}>Export journal ↓</button>}
-              <button className="exportLink" onClick={() => { setCompanionOn((v) => !v); play("tap"); }} data-tip="Some evenings you write to be alone with a thought. Turn reflections off any time.">
-                {companionOn ? "reflections on" : "reflections off"}
-              </button>
+              <div className="jHeroActions">
+                {journal.length > 0 && <button className="exportLink" onClick={exportJournal}>Export journal ↓</button>}
+                <button className="exportLink" onClick={() => { setCompanionOn((v) => !v); play("tap"); }} data-tip="Some evenings you write to be alone with a thought. Turn reflections off any time.">
+                  {companionOn ? "reflections on" : "reflections off"}
+                </button>
+              </div>
             </div>
 
              <div className="gratitudeCard">
@@ -2697,7 +2699,7 @@ h3{font-family:'Instrument Serif',serif; font-size:18px}
 .exportLink{border:1px solid var(--border); background:var(--surface); color:var(--muted);
   font-size:11.5px; font-weight:600; padding:6px 12px; border-radius:999px; transition:all .2s}
 .exportLink:hover{color:var(--ink); border-color:var(--border2)}
-.jHero .exportLink{position:absolute; right:0; top:6px}
+.jHeroActions{position:absolute; right:0; top:6px; display:flex; gap:8px; align-items:center}
 .rangeToggle{display:inline-flex; gap:4px; margin-top:16px; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:4px}
 .rangePill{border:none; background:transparent; color:var(--muted); font-size:12.5px; font-weight:600; padding:6px 16px; border-radius:999px; transition:all .2s}
 .rangePill.rangeOn{background:var(--ink); color:var(--bg)}
