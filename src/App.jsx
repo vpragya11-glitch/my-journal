@@ -427,6 +427,8 @@ export default function Sukoon() {
   const [weekIntentEditing, setWeekIntentEditing] = useState(false);
   const [weekIntentDraft, setWeekIntentDraft] = useState("");
   const [soundOn, setSoundOn] = useState(true);
+  const [companionOn, setCompanionOn] = useState(true);
+  const [reflectingId, setReflectingId] = useState(null);
    const [ambient, setAmbient] = useState(null); // active scene key, or null
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null); // { msg, undo }
@@ -497,6 +499,7 @@ export default function Sukoon() {
           setTodos(d.todos || []); setJournal(d.journal || []); setPocket(d.pocket || []);
           setGratitude(d.gratitude || []);
           if (typeof d.soundOn === "boolean") setSoundOn(d.soundOn);
+          if (typeof d.companionOn === "boolean") setCompanionOn(d.companionOn);
           if (d.theme) setTheme(d.theme);
           found = true;
         }
@@ -533,11 +536,11 @@ export default function Sukoon() {
   useEffect(() => {
     if (!loaded) return;
     const t = setTimeout(async () => {
-     try { await store.set(STORAGE_KEY, JSON.stringify({ todos, journal, pocket, gratitude, soundOn, theme })); }
+     try { await store.set(STORAGE_KEY, JSON.stringify({ todos, journal, pocket, gratitude, soundOn, companionOn, theme })); }
       catch (e) { console.error("save failed", e); }
     }, 400);
     return () => clearTimeout(t);
-  }, [todos, journal, pocket, gratitude, soundOn, theme, loaded]);
+  }, [todos, journal, pocket, gratitude, soundOn, companionOn, theme, loaded]);
 
   /* schedule gentle reminder notifications for intentions with a time set,
      while this tab stays open — browsers don't allow background delivery otherwise */
@@ -856,6 +859,29 @@ export default function Sukoon() {
     setJournal((j) => [{ id: uid(), stamp: Date.now(), mood: entryMood, text: v, prompt: dailyPrompt(), tags }, ...j]);
     setEntryText(""); setEntryMood(null); setEntryTags([]); setEntryTagInput("");
     play("save"); flash(pick(JOURNAL_LINES));
+  };
+
+   const reflectOnEntry = async (j) => {
+    if (!supabase || reflectingId) return;
+    setReflectingId(j.id);
+    play("tap");
+    try {
+      const { data, error } = await supabase.functions.invoke("journal-companion", {
+        body: { text: j.text, mood: j.mood ? MOOD_NAME[j.mood] : null },
+      });
+      if (error) throw error;
+      const line = data && data.line;
+      if (line) {
+        setJournal((arr) => arr.map((x) =>
+          x.id === j.id ? { ...x, companion: line, companionDistress: !!data.distress } : x));
+      } else {
+        flash("No reflection just now — your words stand on their own");
+      }
+    } catch (e) {
+      flash("Couldn't reflect right now");
+    } finally {
+      setReflectingId(null);
+    }
   };
   const removeEntry = (id) => {
     const item = journal.find((x) => x.id === id);
@@ -1612,6 +1638,9 @@ export default function Sukoon() {
               <p className="eyebrow">Today's prompt</p>
               <h1 className="prompt"><em>{dailyPrompt()}</em></h1>
               {journal.length > 0 && <button className="exportLink" onClick={exportJournal}>Export journal ↓</button>}
+              <button className="exportLink" onClick={() => { setCompanionOn((v) => !v); play("tap"); }} data-tip="Some evenings you write to be alone with a thought. Turn reflections off any time.">
+                {companionOn ? "reflections on" : "reflections off"}
+              </button>
             </div>
 
              <div className="gratitudeCard">
@@ -1731,6 +1760,16 @@ export default function Sukoon() {
                         {j.tags.map((tag) => <span key={tag} className="jTagChip">#{tag}</span>)}
                       </div>
                     )}
+                    {j.companion ? (
+                      <div className={"companionLine" + (j.companionDistress ? " companionCare" : "")}>
+                        {!j.companionDistress && <span className="companionMark"><LeafMark /></span>}
+                        <p>{j.companion}</p>
+                      </div>
+                    ) : companionOn && editingJournalId !== j.id ? (
+                      <button className="reflectBtn" onClick={() => reflectOnEntry(j)} disabled={reflectingId === j.id}>
+                        {reflectingId === j.id ? "reflecting…" : "reflect with me"}
+                      </button>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -2931,4 +2970,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .side > *:nth-child(6){animation-delay:.41s}
 .gcloud{transform-box:view-box; animation:gdrift 26s ease-in-out infinite}
 @keyframes gdrift{0%,100%{transform:translateX(0)}50%{transform:translateX(14px)}}
+/* journal companion — a quiet presence under an entry */
+.reflectBtn{margin-top:12px; border:1px dashed var(--border2); background:transparent; color:var(--muted); font-size:12px; font-weight:600; font-style:italic; font-family:'Instrument Serif',serif; padding:7px 15px; border-radius:999px; transition:all .2s}
+.reflectBtn:hover:not(:disabled){border-style:solid; border-color:var(--moss); color:var(--moss-deep); background:var(--moss-soft)}
+.reflectBtn:disabled{opacity:.6; cursor:default}
+.companionLine{display:flex; align-items:flex-start; gap:10px; margin-top:14px; padding:13px 16px; background:var(--moss-soft); border-radius:14px; animation:riseFade .6s ease both}
+.companionMark{flex:none; color:var(--moss); width:18px; height:18px; margin-top:1px}
+.companionMark .leaf{width:18px; height:18px}
+.companionLine p{margin:0; font-family:'Instrument Serif',serif; font-style:italic; font-size:15px; line-height:1.6; color:var(--moss-deep)}
+.companionCare{background:var(--lilac-soft); border:1px solid color-mix(in srgb, var(--lilac) 40%, var(--border)); flex-direction:column; gap:6px}
+.companionCare p{color:var(--ink); font-style:normal; font-family:'Instrument Sans'; font-size:14px}
 `;
