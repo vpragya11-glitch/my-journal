@@ -1450,9 +1450,8 @@ export default function Sukoon() {
                     <button className={"cat someday" + (draftBucket === "someday" ? " catOn" : "")} data-tip="Save for later, pull in when ready"
                       onClick={() => { setDraftBucket((b) => (b === "someday" ? "today" : "someday")); play("nav"); }}>🗂 Someday</button>
                     <span className="tipWrap" data-tip="Optional time — enables calendar export and reminders">
-  <input type="time" className="timeIn" value={draftTime} onChange={(e) => setDraftTime(e.target.value)}
-    aria-label="Optional time" />
-</span>
+                      <TimeField value={draftTime} onChange={setDraftTime} />
+                    </span>
                     <input className="tagIn" value={draftTagInput} onChange={(e) => setDraftTagInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); commitDraftTag(); } }}
                       onBlur={() => draftTagInput.trim() && commitDraftTag()}
@@ -2399,6 +2398,41 @@ function LengthTrend({ points }) {
   );
 }
 
+function TimeField({ value, onChange }) {
+  const has = /^\d{2}:\d{2}$/.test(value || "");
+  const h24 = has ? parseInt(value.slice(0, 2), 10) : null;
+  const min = has ? value.slice(3, 5) : "";
+  const ampm = h24 === null ? "AM" : h24 >= 12 ? "PM" : "AM";
+  const h12 = h24 === null ? "" : String(((h24 + 11) % 12) + 1);
+
+  const compose = (nh12, nmin, nap) => {
+    if (!nh12 || nmin === "") { onChange(""); return; }
+    let hh = parseInt(nh12, 10) % 12;
+    if (nap === "PM") hh += 12;
+    onChange(String(hh).padStart(2, "0") + ":" + String(nmin).padStart(2, "0"));
+  };
+
+  const hours = Array.from({ length: 12 }, (_, i) => String(i + 1));
+  const mins = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
+
+  return (
+    <div className={"timeField" + (has ? " timeFieldSet" : "")}>
+      <select className="timeSel" value={h12} onChange={(e) => compose(e.target.value, min || "00", ampm)} aria-label="Hour">
+        <option value="">––</option>
+        {hours.map((h) => <option key={h} value={h}>{h}</option>)}
+      </select>
+      <span className="timeColon">:</span>
+      <select className="timeSel" value={min} onChange={(e) => compose(h12 || "12", e.target.value, ampm)} aria-label="Minute">
+        <option value="">––</option>
+        {mins.map((m) => <option key={m} value={m}>{m}</option>)}
+      </select>
+      <button type="button" className="timeAmpm" onClick={() => compose(h12 || "12", min || "00", ampm === "AM" ? "PM" : "AM")} disabled={!has} aria-label="Toggle AM/PM">
+        {ampm}
+      </button>
+    </div>
+  );
+}
+
 /* ═══ small pieces ═══ */
 function LeafMark() {
   return (
@@ -3143,4 +3177,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .archiveItem{padding-top:14px; border-top:1px solid var(--border)}
 .archiveItemLabel{margin:0 0 8px; font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--pollen)}
 .archiveItemBody{margin:0 0 6px; font-family:'Instrument Serif',serif; font-size:15px; line-height:1.65; color:var(--ink)}
+/* time field — replaces the native picker, in Sukoon's language */
+.timeField{display:inline-flex; align-items:center; gap:2px; padding:4px 6px; border:1px solid var(--border); border-radius:999px; background:var(--surface); transition:border-color .2s, background .2s}
+.timeField.timeFieldSet{border-color:color-mix(in srgb, var(--moss) 40%, var(--border)); background:var(--moss-soft)}
+.timeSel{border:none; background:transparent; font-family:'Instrument Serif',serif; font-size:15px; color:var(--ink); padding:2px 4px; border-radius:8px; cursor:pointer; appearance:none; text-align:center; transition:background .15s}
+.timeSel:hover{background:color-mix(in srgb, var(--moss) 14%, transparent)}
+.timeSel:focus-visible{outline:none; background:color-mix(in srgb, var(--moss) 18%, transparent)}
+.timeColon{font-family:'Instrument Serif',serif; font-size:15px; color:var(--muted); margin:0 -1px}
+.timeAmpm{border:none; background:transparent; font-family:'Satoshi',sans-serif; font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--moss-deep); padding:4px 8px; border-radius:999px; cursor:pointer; transition:background .15s}
+.timeAmpm:hover:not(:disabled){background:color-mix(in srgb, var(--moss) 16%, transparent)}
+.timeAmpm:disabled{color:var(--faint); cursor:default}
 `;
