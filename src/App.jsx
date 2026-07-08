@@ -1614,6 +1614,7 @@ export default function Sukoon() {
                           onClick={(e) => { e.stopPropagation(); duplicateTodo(t.id); }} aria-label="Duplicate intention"><Icon name="copy" /></button>
                         <button className="x" onClick={(e) => { e.stopPropagation(); removeTodo(t.id); }} aria-label="Remove">×</button>
                         </div>
+                        </div>
 
                         {recurEditId === t.id && (
                           <div className="recurEditRow">
