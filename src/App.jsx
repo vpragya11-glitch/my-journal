@@ -1563,7 +1563,7 @@ export default function Sukoon() {
                           />
                         ) : (
                           <span className="rowText" onClick={(e) => { e.stopPropagation(); startEdit(t); }} data-tip="Click to edit">
-                            {isRecurringItem(t) && <i className="recurMark" data-tip={recurLabel(recur)}>🔁</i>}
+                            {isRecurringItem(t) && <i className="recurMark" data-tip={recurLabel(recur)}><Icon name="repeat" /></i>}
                             {t.text}
                           </span>
                         )}
@@ -1591,26 +1591,27 @@ export default function Sukoon() {
                         )}
                         {t.time && <span className="timeBadge">{t.time}</span>}
                         <span className={"tag " + t.cat}>{t.cat}</span>
+                        <div className="rowActions">
                         {isRecurringItem(t) ? (
                           <button className="rowIcon recurBadge" data-tip="Change how often this repeats"
-                            onClick={(e) => { e.stopPropagation(); cycleRowRecur(t.id); }}>🔁 {recurLabel(recur)}</button>
+                            onClick={(e) => { e.stopPropagation(); cycleRowRecur(t.id); }}><Icon name="repeat" /> {recurLabel(recur)}</button>
                         ) : (
                           <button className="rowIcon" data-tip="Make this repeat"
-                            onClick={(e) => { e.stopPropagation(); cycleRowRecur(t.id); }}>🔁</button>
+                            onClick={(e) => { e.stopPropagation(); cycleRowRecur(t.id); }}><Icon name="repeat" /></button>
                         )}
                         <button className="rowIcon" data-tip={subs.length ? "Add or edit steps" : "Break into a few steps"}
-                          onClick={(e) => { e.stopPropagation(); setSubOpenId((cur) => (cur === t.id ? null : t.id)); }}>☰</button>
+                          onClick={(e) => { e.stopPropagation(); setSubOpenId((cur) => (cur === t.id ? null : t.id)); }}><Icon name="steps" /></button>
                         <button className="rowIcon" data-tip="Add to Google Calendar"
-                          onClick={(e) => { e.stopPropagation(); window.open(gcalLink(t.text, t.time), "_blank"); }}>📅</button>
+                          onClick={(e) => { e.stopPropagation(); window.open(gcalLink(t.text, t.time), "_blank"); }}><Icon name="calendar" /></button>
                         {t.time && (
                           <button className={"rowIcon" + (t.reminderOn ? " reminderOn" : "")}
                             data-tip={t.reminderOn ? "Reminder on — click to turn off" : "Set a gentle reminder"}
-                            onClick={(e) => { e.stopPropagation(); toggleReminder(t.id); }}>🔔</button>
+                            onClick={(e) => { e.stopPropagation(); toggleReminder(t.id); }}><Icon name="bell" /></button>
                         )}
                         <button className="rowIcon" data-tip="Save for someday instead"
-                          onClick={(e) => { e.stopPropagation(); sendToSomeday(t.id); }} aria-label="Move to someday">🗂</button>
+                          onClick={(e) => { e.stopPropagation(); sendToSomeday(t.id); }} aria-label="Move to someday"><Icon name="bookmark" /></button>
                         <button className="rowIcon" data-tip="Duplicate — same thing, next time"
-                          onClick={(e) => { e.stopPropagation(); duplicateTodo(t.id); }} aria-label="Duplicate intention">⧉</button>
+                          onClick={(e) => { e.stopPropagation(); duplicateTodo(t.id); }} aria-label="Duplicate intention"><Icon name="copy" /></button>
                         <button className="x" onClick={(e) => { e.stopPropagation(); removeTodo(t.id); }} aria-label="Remove">×</button>
                         </div>
 
@@ -1659,7 +1660,7 @@ export default function Sukoon() {
                 {somedayTodos.length > 0 && (
                   <div className="somedayCard">
                     <button className="somedayHead" onClick={() => { setSomedayOpen((o) => !o); play("nav"); }}>
-                      <span>🗂 Someday <b>{somedayTodos.length}</b></span>
+                      <span><Icon name="bookmark" /> Someday <b>{somedayTodos.length}</b></span>
                       <span className={"somedayChevron" + (somedayOpen ? " somedayOpenChevron" : "")}>›</span>
                     </button>
                     {somedayOpen && (
@@ -2496,6 +2497,17 @@ function TimeField({ value, onChange }) {
     </div>
   );
 }
+function Icon({ name }) {
+  const shapes = {
+    repeat: <><path d="M16.5 3.5 20 7l-3.5 3.5"/><path d="M20 7H10a6 6 0 0 0-6 6"/><path d="M7.5 20.5 4 17l3.5-3.5"/><path d="M4 17h10a6 6 0 0 0 6-6"/></>,
+    steps: <><path d="M4 7l1.6 1.6L8.2 6"/><path d="M12 7h8"/><path d="M4 13l1.6 1.6L8.2 11"/><path d="M12 13h8"/><path d="M12 18h6"/></>,
+    calendar: <><rect x="4" y="5" width="16" height="15" rx="2.4"/><path d="M4 9.5h16"/><path d="M8.5 3.5v3M15.5 3.5v3"/></>,
+    bell: <><path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 4.4 1.8 5.5 1.8 5.5H4.7S6.5 14.4 6.5 10Z"/><path d="M10.4 19a1.7 1.7 0 0 0 3.2 0"/></>,
+    bookmark: <path d="M7 4h10a1 1 0 0 1 1 1v14.4a.6.6 0 0 1-.94.5L12 16.8l-5.06 3.6A.6.6 0 0 1 6 19.9V5a1 1 0 0 1 1-1Z"/>,
+    copy: <><rect x="8" y="8" width="12" height="12" rx="2.4"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></>,
+  };
+  return <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">{shapes[name] || null}</svg>;
+}
 /* ═══ small pieces ═══ */
 function LeafMark() {
   return (
@@ -3262,38 +3274,37 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .timeOpt{border:none; background:transparent; font-family:'Instrument Serif',serif; font-size:14px; color:var(--ink); padding:7px 0; border-radius:8px; cursor:pointer; transition:background .12s, color .12s}
 .timeOpt:hover{background:color-mix(in srgb, var(--moss) 16%, transparent)}
 .timeOptOn{background:var(--moss); color:var(--bg); font-weight:600}
-/* ── row density: keep resting rows compact, reveal actions on hover ──
-   Pure-action icons used to reserve space at all times, so a row with tags,
-   a time and a category spilled its icons onto a ragged second line. Now they
-   collapse to zero width at rest and ease open on hover/focus; informational
-   chips (tags, time, category, an active reminder, the repeat cadence) stay
-   put. Touch devices — no hover — keep the icons visible so they're reachable. */
-@media (hover: hover) {
-  .row .rowIcon:not(.recurBadge):not(.reminderOn),
-  .row .x {
-    max-width: 0; padding-left: 0; padding-right: 0;
-    opacity: 0; overflow: hidden; pointer-events: none;
-    transition: max-width .22s ease, opacity .18s ease, padding .2s ease;
-  }
-  .row:not(.editing):hover .rowIcon:not(.recurBadge):not(.reminderOn),
-  .row:not(.editing):focus-within .rowIcon:not(.recurBadge):not(.reminderOn) {
-    max-width: 40px; padding-left: 6px; padding-right: 6px; opacity: .9; pointer-events: auto;
-  }
-  .row:not(.editing):hover .x,
-  .row:not(.editing):focus-within .x {
-    max-width: 36px; padding-left: 8px; padding-right: 8px; opacity: .85; pointer-events: auto;
-  }
+/* ── premium icon system — stroke glyphs, palette-tinted, replace the emoji chrome ── */
+.ic{width:16px;height:16px;display:block;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.rowIcon{display:inline-grid;place-items:center;border-radius:999px}
+.rowIcon svg{pointer-events:none}
+.recurMark{display:inline-grid;place-items:center;vertical-align:-2px;margin-right:6px}
+.recurMark .ic{width:12.5px;height:12.5px}
+.recurBadge{gap:5px}
+.recurBadge .ic{width:13px;height:13px}
+.cat{display:inline-flex;align-items:center;gap:6px}
+.cat .ic{width:14px;height:14px}
+.somedayHead span:first-child{display:inline-flex;align-items:center;gap:7px}
+.somedayHead .ic{width:15px;height:15px}
+
+/* ── action cluster — right-aligned, tight, revealed on hover as one calm group ── */
+.rowActions{display:inline-flex;align-items:center;gap:3px;margin-left:auto;flex:none}
+.rowActions .rowIcon:hover{background:color-mix(in srgb, var(--moss) 12%, transparent)}
+
+@media (hover:hover){
+  .row .rowActions{max-width:0;opacity:0;overflow:hidden;pointer-events:none;transition:max-width .25s ease,opacity .2s ease}
+  .row:not(.editing):hover .rowActions,
+  .row:not(.editing):focus-within .rowActions{max-width:300px;opacity:1;overflow:visible;pointer-events:auto}
 }
 
-/* ── editing a row: the field takes the whole line, everything else steps
-   aside, so the input can never be squeezed into a collapsed sliver ── */
-.row.editing { flex-wrap: nowrap; }
-.row.editing .rowEdit { flex: 1 1 auto; min-width: 0; }
+/* ── editing: field owns the line, everything else steps aside ── */
+.row.editing{flex-wrap:nowrap}
+.row.editing .rowEdit{flex:1 1 auto;min-width:0}
 .row.editing .rowTag,
 .row.editing .rowTagInput,
 .row.editing .stepsBadge,
 .row.editing .timeBadge,
 .row.editing .tag,
 .row.editing .rowIcon,
-.row.editing .x { display: none; }
+.row.editing .rowActions{display:none}
 `;
