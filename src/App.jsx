@@ -344,6 +344,38 @@ const todaysStarters = () => {
   return [0, 1, 2].map((i) => STARTER_POOL[(start + i) % STARTER_POOL.length]);
 };
 
+/* ritual bundles — a few intentions laid down together, morning or evening,
+   in one gentle motion rather than one at a time */
+const RITUAL_BUNDLES = [
+  {
+    id: "morning", label: "Morning ritual", icon: "🌅",
+    blurb: "A soft way to begin",
+    items: [
+      { text: "Drink a glass of water", cat: "personal" },
+      { text: "Stretch for five minutes", cat: "personal" },
+      { text: "Write down today's top 3", cat: "work" },
+    ],
+  },
+  {
+    id: "evening", label: "Evening ritual", icon: "🌙",
+    blurb: "A soft way to close",
+    items: [
+      { text: "Tidy your desk for tomorrow", cat: "work" },
+      { text: "Write in your journal", cat: "personal" },
+      { text: "Set out tomorrow's first task", cat: "work" },
+    ],
+  },
+  {
+    id: "reset", label: "Reset ritual", icon: "🧺",
+    blurb: "For when things feel scattered",
+    items: [
+      { text: "Clear your inbox for 10 minutes", cat: "work" },
+      { text: "Step outside for fresh air", cat: "personal" },
+      { text: "Write down what's weighing on you", cat: "personal" },
+    ],
+  },
+];
+
 /* freeform tags — trimmed, case-insensitive de-duplication */
 const normTag = (s) => s.trim().replace(/\s+/g, " ").replace(/^#/, "");
 const addTagUnique = (arr, tag) => {
@@ -658,6 +690,26 @@ useEffect(() => {
     const minOrder = todos.length ? Math.min(...todos.map(orderOf)) : 0;
     setTodos((t) => [{ id: uid(), text: s.text, cat: s.cat, done: false, stamp: Date.now(), recur: { type: "none", days: [] }, doneDays: [], time: null, reminderOn: false, tags: [], order: minOrder - 1, bucket: "today", subtasks: [], isFocus: false }, ...t]);
     play("add"); flash("Added — small is still a start");
+  };
+
+   /* ritual bundles: lay down a few intentions together, in one gentle motion —
+     skip anything whose text is already sitting in today's list, so re-tapping is always safe */
+  const addBundle = (bundle) => {
+    const already = new Set(todayTodos.map((t) => t.text.trim().toLowerCase()));
+    const toAdd = bundle.items.filter((it) => !already.has(it.text.trim().toLowerCase()));
+    if (toAdd.length === 0) { flash("Already part of today"); return; }
+    const minOrder = todos.length ? Math.min(...todos.map(orderOf)) : 0;
+    const now = Date.now();
+    const fresh = toAdd.map((it, i) => ({
+      id: uid(), text: it.text, cat: it.cat, done: false, stamp: now,
+      recur: { type: "none", days: [] }, doneDays: [], time: null, reminderOn: false,
+      tags: [], order: minOrder - 1 - i, bucket: "today", subtasks: [], isFocus: false,
+    }));
+    setTodos((t) => [...fresh, ...t]);
+    play("add");
+    flash(toAdd.length === bundle.items.length
+      ? `${bundle.label} laid down — ${toAdd.length} intention${toAdd.length === 1 ? "" : "s"}`
+      : `Added ${toAdd.length} — the rest were already there`);
   };
   const commitDraftTag = () => {
     let next = draftTags;
@@ -1564,6 +1616,19 @@ const tinyWins = useMemo(() => {
                     </div>
                   </div>
                 )}
+
+                 <div className="ritualCard">
+                  <p className="ritualLabel">Ritual bundles — lay a few down together</p>
+                  <div className="ritualRow">
+                    {RITUAL_BUNDLES.map((b) => (
+                      <button key={b.id} className="ritualChip" onClick={() => addBundle(b)}
+                        data-tip={b.items.map((i) => i.text).join(" · ")}>
+                        <span className="ritualIcon">{b.icon}</span>
+                        <span className="ritualText"><b>{b.label}</b><small>{b.blurb}</small></span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 {todayTodos.length > 0 && visible.length === 0 && (
                   <Empty msg={filter === "all" ? "Nothing in this view right now." : `No ${filter} intentions yet.`} />
@@ -3465,4 +3530,18 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .focusRow:hover .focusTick{background:color-mix(in srgb, var(--pollen) 18%, transparent)}
 .focusText{font-family:'Instrument Serif',serif; font-style:italic; font-size:19px; line-height:1.4; color:var(--ink)}
 .rowIcon.focusOn{opacity:1; color:var(--pollen)}
+
+/* ritual bundles — a few intentions laid down together in one gentle motion */
+.ritualCard{display:flex; flex-direction:column; gap:10px; padding:2px 2px 4px}
+.ritualLabel{margin:0; font-size:12px; font-weight:600; letter-spacing:.04em; color:var(--faint)}
+.ritualRow{display:flex; flex-wrap:wrap; gap:9px}
+.ritualChip{display:flex; align-items:center; gap:10px; border:1px solid var(--border); background:var(--surface);
+  padding:10px 16px; border-radius:16px; transition:all .2s; box-shadow:var(--sh-sm); text-align:left}
+.ritualChip:hover{border-color:var(--moss); background:var(--moss-soft); transform:translateY(-1px)}
+.ritualChip:active{transform:scale(.97)}
+.ritualIcon{font-size:19px; flex:none}
+.ritualText{display:flex; flex-direction:column; gap:1px}
+.ritualText b{font-size:13.5px; font-weight:600; color:var(--ink)}
+.ritualText small{font-size:11px; color:var(--muted); font-style:italic; font-family:'Instrument Serif',serif}
+@media (max-width:560px){ .ritualRow{flex-direction:column} .ritualChip{width:100%} }
 `;
