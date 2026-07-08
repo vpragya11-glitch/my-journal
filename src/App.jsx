@@ -63,54 +63,85 @@ const store = {
   },
 };
 
-/* ── sound: soft, felt, never sharp ─────────────────────────────── */
+/* ── sound: soft natural materials, never UI beeps ───────────────────
+   Every cue is one or more soft "notes" through a shared low-pass bus, so
+   the harsh highs that read as synthy (roughly everything above ~4kHz) are
+   always rolled off. Notes have a soft attack (no onset click) and a
+   natural exponential tail (no abrupt cutoff), and sit quietly under the
+   ambience — felt more than heard. Think muted marimba, soft koto, felt. */
 let audioCtx = null;
+let softBus = null;
 const getCtx = () => {
   if (typeof window === "undefined") return null;
   if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
   if (audioCtx.state === "suspended") audioCtx.resume();
   return audioCtx;
 };
-const tone = (freq, dur = 0.1, vol = 0.06, when = 0, type = "sine") => {
-  const ctx = getCtx(); if (!ctx) return;
-  const t = ctx.currentTime + when;
-  const o = ctx.createOscillator(); const g = ctx.createGain();
-  o.type = type; o.frequency.setValueAtTime(freq, t);
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g); g.connect(ctx.destination);
-  o.start(t); o.stop(t + dur + 0.05);
+/* shared bus — one gentle low-pass rolls the top off everything the UI plays */
+const getSoftBus = (ctx) => {
+  if (softBus && softBus.ctx === ctx) return softBus;
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass"; lp.frequency.value = 3200; lp.Q.value = 0.4; // no resonant peak, soft slope
+  const master = ctx.createGain(); master.gain.value = 0.85;         // sits under the ambience
+  lp.connect(master); master.connect(ctx.destination);
+  softBus = { ctx, in: lp };
+  return softBus;
 };
-const softTone = (freq, dur = 0.08, vol = 0.02) => {
+/* one soft note — wooden/felt by default.
+   attack ≥ 14ms removes the click; the tail decays naturally; a quiet octave
+   partial lends a little marimba warmth without brightness; `glide` bends the
+   pitch for a soft "water-drop" settle. */
+const note = (freq, opts = {}) => {
   const ctx = getCtx(); if (!ctx) return;
-  const t = ctx.currentTime;
-  const o = ctx.createOscillator(); const g = ctx.createGain();
-  o.type = "sine"; o.frequency.setValueAtTime(freq, t);
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.linearRampToValueAtTime(vol, t + 0.045);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g); g.connect(ctx.destination);
-  o.start(t); o.stop(t + dur + 0.05);
+  const { dur = 0.5, vol = 0.05, when = 0, attack = 0.016, type = "sine", glide = 0, partial = 0, partialRatio = 2 } = opts;
+  const bus = getSoftBus(ctx);
+  const t = ctx.currentTime + when;
+  const voice = (f, v, d, gl) => {
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(v, t + attack);        // soft attack, no click
+    g.gain.exponentialRampToValueAtTime(0.0001, t + d);   // natural tail, no cutoff
+    g.connect(bus.in);
+    const o = ctx.createOscillator();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (gl) o.frequency.exponentialRampToValueAtTime(Math.max(40, f + gl), t + d * 0.9);
+    o.connect(g); o.start(t); o.stop(t + d + 0.08);
+  };
+  voice(freq, vol, dur, glide);
+  if (partial) voice(freq * partialRatio, vol * partial, dur * 0.7, 0);
 };
 const SOUNDS = {
-  type:    () => softTone(650 + Math.random() * 80, 0.09, 0.011),
-  tap:     () => tone(392, 0.12, 0.03),
-  check:   () => { tone(523, 0.12, 0.05); tone(784, 0.18, 0.045, 0.09); },
-  uncheck: () => tone(330, 0.1, 0.04),
-  add:     () => { tone(440, 0.09, 0.04); tone(554, 0.13, 0.04, 0.07); },
-  delete:  () => tone(233, 0.13, 0.045),
-  undo:    () => { tone(392, 0.09, 0.04); tone(330, 0.11, 0.035, 0.06); },
-  save:    () => { tone(523, 0.11, 0.045); tone(659, 0.11, 0.045, 0.09); tone(784, 0.2, 0.04, 0.18); },
-  nav:     () => tone(587, 0.06, 0.03, 0, "triangle"),
-  inhale:  () => { tone(392, 0.5, 0.035); tone(523, 0.5, 0.03, 0.02); },
-  exhale:  () => { tone(330, 0.7, 0.035); tone(262, 0.7, 0.028, 0.03); },
-  hold:    () => tone(440, 0.35, 0.025),
-  bloom:   () => { tone(392, 0.3, 0.04); tone(494, 0.3, 0.038, 0.12); tone(587, 0.35, 0.036, 0.24); tone(784, 0.6, 0.032, 0.36); },
-  drag:    () => tone(440, 0.06, 0.03, 0, "triangle"),
-  drop:    () => { tone(392, 0.08, 0.035); tone(494, 0.1, 0.03, 0.05); },
-  copy:    () => { tone(659, 0.1, 0.04); tone(880, 0.13, 0.035, 0.08); },
-  pop:     () => { tone(700, 0.06, 0.03); tone(900, 0.07, 0.026, 0.04); },
+  /* barely-there felt tick — quiet enough that fast typing reads as soft rain */
+  type:    () => note(240 + Math.random() * 40, { dur: 0.11, vol: 0.010, attack: 0.010 }),
+  /* soft wooden note, muted-marimba warmth */
+  tap:     () => note(294, { dur: 0.42, vol: 0.042, partial: 0.28 }),
+  /* navigation whispers: softer + shorter than tap, slow attack so it never startles */
+  nav:     () => note(330, { dur: 0.26, vol: 0.028, attack: 0.03 }),
+  /* finishing an intention — a soft two-note rising chime, a gentle "there" */
+  check:   () => { note(392, { dur: 0.5, vol: 0.05, partial: 0.22 }); note(587, { dur: 0.62, vol: 0.045, when: 0.10, partial: 0.20 }); },
+  /* un-completing — a soft downward settle */
+  uncheck: () => note(330, { dur: 0.4, vol: 0.038, glide: -70 }),
+  /* placing something down — two gentle wooden notes */
+  add:     () => { note(294, { dur: 0.4, vol: 0.040, partial: 0.25 }); note(392, { dur: 0.5, vol: 0.038, when: 0.08, partial: 0.22 }); },
+  /* removing — a soft descending "settling down" gesture, never punitive */
+  delete:  () => { note(349, { dur: 0.42, vol: 0.040 }); note(233, { dur: 0.55, vol: 0.036, when: 0.09, glide: -30 }); },
+  /* undo — a gentle lift, bringing something back */
+  undo:    () => { note(330, { dur: 0.36, vol: 0.038 }); note(440, { dur: 0.46, vol: 0.034, when: 0.08 }); },
+  /* keeping an entry — a warm, muted ascending triad */
+  save:    () => { note(392, { dur: 0.44, vol: 0.045, partial: 0.2 }); note(523, { dur: 0.5, vol: 0.042, when: 0.09, partial: 0.2 }); note(659, { dur: 0.7, vol: 0.038, when: 0.19, partial: 0.18 }); },
+  /* breath cues — long, soft swells rather than pips */
+  inhale:  () => { note(392, { dur: 0.8, vol: 0.030, attack: 0.14, partial: 0.16 }); note(523, { dur: 0.8, vol: 0.024, when: 0.03, attack: 0.14 }); },
+  exhale:  () => { note(294, { dur: 1.0, vol: 0.030, attack: 0.10, glide: -30 }); note(196, { dur: 1.0, vol: 0.022, when: 0.04, attack: 0.10 }); },
+  hold:    () => note(392, { dur: 0.5, vol: 0.020, attack: 0.08 }),
+  /* full day complete — a soft blooming arpeggio, the warmest moment */
+  bloom:   () => { note(392, { dur: 0.6, vol: 0.042, partial: 0.2 }); note(494, { dur: 0.6, vol: 0.040, when: 0.12, partial: 0.2 }); note(587, { dur: 0.7, vol: 0.038, when: 0.24, partial: 0.18 }); note(784, { dur: 1.0, vol: 0.034, when: 0.36, partial: 0.16 }); },
+  /* picking up / setting down while dragging */
+  drag:    () => note(262, { dur: 0.2, vol: 0.028, attack: 0.012 }),
+  drop:    () => { note(330, { dur: 0.3, vol: 0.034 }); note(262, { dur: 0.4, vol: 0.030, when: 0.06 }); },
+  /* copied — a soft confirmation */
+  copy:    () => { note(440, { dur: 0.36, vol: 0.036, partial: 0.18 }); note(587, { dur: 0.5, vol: 0.032, when: 0.08, partial: 0.16 }); },
+  /* tiny step toggle — a small soft wooden pop */
+  pop:     () => note(440, { dur: 0.16, vol: 0.030, attack: 0.012, partial: 0.2 }),
 };
 /* ─────────── ambient soundscapes: generated live, so nothing loads over the wire ─────────── */
 const makeNoise = (ctx, secs = 2.2) => {
