@@ -195,6 +195,7 @@ const weekKey = (ts) => {
   const wk = Math.ceil((((d - jan1) / 86400000) + jan1.getDay() + 1) / 7);
   return d.getFullYear() + "-W" + wk;
 };
+const prevWeekKey = () => { const d = new Date(); d.setDate(d.getDate() - 7); return weekKey(d.getTime()); };
 const partOfDay = () => {
   const h = new Date().getHours();
   if (h < 5) return "night"; if (h < 12) return "morning";
@@ -431,7 +432,8 @@ export default function Sukoon() {
   const [reflectingId, setReflectingId] = useState(null);
   const [memoryOn, setMemoryOn] = useState(false);          // opt-in, off by default
   const [companionMemory, setCompanionMemory] = useState(""); // the distilled digest
-  const [memoryRevealed, setMemoryRevealed] = useState(false);
+  const [weeklyLetter, setWeeklyLetter] = useState(null); // { weekKey, text, createdAt }
+  const [letterComposing, setLetterComposing] = useState(false);
    const [ambient, setAmbient] = useState(null); // active scene key, or null
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null); // { msg, undo }
@@ -505,6 +507,7 @@ export default function Sukoon() {
           if (typeof d.companionOn === "boolean") setCompanionOn(d.companionOn);
           if (typeof d.memoryOn === "boolean") setMemoryOn(d.memoryOn);
           if (typeof d.companionMemory === "string") setCompanionMemory(d.companionMemory);
+          if (d.weeklyLetter && typeof d.weeklyLetter === "object") setWeeklyLetter(d.weeklyLetter);
           if (d.theme) setTheme(d.theme);
           found = true;
         }
@@ -541,11 +544,11 @@ export default function Sukoon() {
   useEffect(() => {
     if (!loaded) return;
     const t = setTimeout(async () => {
-     try { await store.set(STORAGE_KEY, JSON.stringify({ todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, theme })); }
+     try { await store.set(STORAGE_KEY, JSON.stringify({ todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, weeklyLetter, theme })); }
       catch (e) { console.error("save failed", e); }
     }, 400);
     return () => clearTimeout(t);
-  }, [todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, theme, loaded]);
+  }, [todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, weeklyLetter, theme, loaded]);
 
   /* schedule gentle reminder notifications for intentions with a time set,
      while this tab stays open — browsers don't allow background delivery otherwise */
@@ -1166,6 +1169,73 @@ export default function Sukoon() {
     if (best && best[1] >= 4) bits.push(`You felt lightest on ${best[0]}.`);
     return bits;
   }, [journal]);
+
+   /* the week just ended, distilled — facts only, omit what's absent */
+  const lastWeekDigest = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now); start.setDate(now.getDate() - now.getDay() - 7); start.setHours(0,0,0,0);
+    const end = new Date(start); end.setDate(start.getDate() + 7);
+    const inWeek = (ts) => ts >= start.getTime() && ts < end.getTime();
+    const wkJournal = journal.filter((j) => inWeek(j.stamp));
+    const done = todos.filter((t) => t.doneAt && inWeek(t.doneAt)).length;
+    const active = new Set();
+    todos.filter((t) => t.doneAt && inWeek(t.doneAt)).forEach((t) => active.add(dayKey(t.doneAt)));
+    wkJournal.forEach((j) => active.add(dayKey(j.stamp)));
+    pocket.filter((p) => inWeek(p.stamp)).forEach((p) => active.add(dayKey(p.stamp)));
+    const eve = wkJournal.filter((j) => new Date(j.stamp).getHours() >= 17).length;
+    const tagCounts = {};
+    wkJournal.forEach((j) => (j.tags || []).forEach((t) => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
+    const topTag = Object.entries(tagCounts).sort((a, b) => b[1] - a[1])[0];
+    const moods = wkJournal.filter((j) => j.mood).sort((a, b) => a.stamp - b.stamp).map((j) => MOOD_VALUE[j.mood] || 3);
+    let arc = null;
+    if (moods.length >= 2) {
+      const half = Math.floor(moods.length / 2);
+      const first = moods.slice(0, half).reduce((s, v) => s + v, 0) / Math.max(1, half);
+      const second = moods.slice(half).reduce((s, v) => s + v, 0) / Math.max(1, moods.length - half);
+      arc = second - first > 0.5 ? "lifted through the week" : first - second > 0.5 ? "dipped toward the end" : "held fairly steady";
+    }
+    const bright = {};
+    wkJournal.filter((j) => j.mood).forEach((j) => {
+      const wd = new Date(j.stamp).toLocaleDateString("en-IN", { weekday: "long" });
+      const v = MOOD_VALUE[j.mood] || 3; if (!bright[wd] || v > bright[wd]) bright[wd] = v;
+    });
+    const best = Object.entries(bright).sort((a, b) => b[1] - a[1])[0];
+    const label = `${start.toLocaleDateString("en-IN",{day:"numeric",month:"short"})}–${new Date(end-1).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}`;
+    const lines = [
+      `Intentions completed: ${done}.`,
+      `Evenings journaled: ${eve} of ${wkJournal.length} entries.`,
+      `Active days: ${active.size} of 7.`,
+      topTag && topTag[1] >= 2 ? `Recurring theme: "${topTag[0]}".` : null,
+      arc ? `Mood ${arc}.` : null,
+      best && best[1] >= 4 ? `Lightest day: ${best[0]}.` : null,
+    ].filter(Boolean);
+    return { activeCount: active.size, label, text: lines.join("\n") };
+  }, [todos, journal, pocket]);
+
+  /* compose the letter once, when a new week has begun and last week earned one */
+  useEffect(() => {
+    if (!loaded || !companionOn || letterComposing) return;
+    const pk = prevWeekKey();
+    if (weeklyLetter && weeklyLetter.weekKey === pk) return; // already have this week's
+    if (lastWeekDigest.activeCount < 2) return;              // week didn't earn one
+    (async () => {
+      setLetterComposing(true);
+      let text = null;
+      if (supabase) {
+        try {
+          const payload = { weekDigest: lastWeekDigest.text };
+          if (memoryOn && companionMemory) payload.memory = companionMemory;
+          const { data, error } = await supabase.functions.invoke("journal-companion", { body: payload });
+          if (!error && data && data.letter) text = data.letter;
+        } catch (e) { /* fall through to template */ }
+      }
+      if (!text) { // offline / failure fallback — plain but never absent
+        text = `This week, you showed up on ${lastWeekDigest.activeCount} of seven days — and that steadiness is its own quiet kind of care. Whatever the week asked of you, you met it in your own unhurried way.\n\nBe gentle with yourself as the next one begins.`;
+      }
+      setWeeklyLetter({ weekKey: pk, text, createdAt: Date.now() });
+      setLetterComposing(false);
+    })();
+  }, [loaded, companionOn, memoryOn, companionMemory, lastWeekDigest, weeklyLetter, letterComposing]);
 
   /* monthly rollup for the Review screen's Month view */
   const reviewMonthStats = useMemo(() => {
@@ -1815,6 +1885,15 @@ export default function Sukoon() {
         {/* ══════════ REVIEW ══════════ */}
         {view === "review" && (
           <section className="narrow">
+            {companionOn && weeklyLetter && weeklyLetter.weekKey === prevWeekKey() && (
+              <div className="letterCard">
+                <p className="letterEyebrow">A letter for your week · {lastWeekDigest.label}</p>
+                {weeklyLetter.text.split("\n").filter(Boolean).map((para, i) => (
+                  <p key={i} className="letterBody">{para}</p>
+                ))}
+                <span className="letterSeal"><LeafMark /></span>
+              </div>
+            )}
             <div className="jHero">
               <p className="eyebrow">{reviewRange === "week" ? "This week" : reviewMonthStats.label}</p>
               <h1 className="prompt">A quiet <em>look back</em>.</h1>
@@ -3023,4 +3102,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .memoryText{margin:0; font-size:13.5px; line-height:1.7; color:var(--ink); white-space:pre-wrap}
 .memoryForget{align-self:flex-start; border:1px solid var(--border); background:var(--surface); color:var(--muted); font-size:11.5px; font-weight:600; padding:6px 13px; border-radius:999px; transition:all .2s}
 .memoryForget:hover{color:var(--rose-deep); border-color:var(--rose)}
+
+/* weekly letter — correspondence, not a dashboard */
+.letterCard{position:relative; background:linear-gradient(168deg, color-mix(in srgb, var(--pollen-soft) 45%, var(--surface)) 0%, var(--surface) 70%);
+  border:1px solid var(--border); border-radius:22px; padding:26px 28px 24px; box-shadow:var(--sh); display:flex; flex-direction:column; gap:14px; overflow:hidden; animation:riseFade .6s ease both}
+.letterEyebrow{margin:0; font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--pollen)}
+.letterBody{margin:0; font-family:'Instrument Serif',serif; font-size:18px; line-height:1.7; color:var(--ink)}
+.letterSeal{align-self:flex-end; width:24px; height:24px; color:var(--moss); opacity:.7}
+.letterSeal .leaf{width:24px; height:24px}
 `;
