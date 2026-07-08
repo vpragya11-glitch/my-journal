@@ -2840,7 +2840,7 @@ h1 em{color:var(--moss)}
 .closeSub{margin:0; font-size:13.5px; color:var(--muted); font-variant-numeric:tabular-nums}
 
 /* layout grid */
-.grid{display:grid; grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr); gap:24px; align-items:start}
+.grid{display:grid; grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr); gap:24px; align-items:start; margin-top:28px}
 .col{display:flex; flex-direction:column; gap:14px; min-width:0}
 .secHead{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
 .secHeadRight{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
@@ -3302,7 +3302,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .heroPromise b{color:var(--moss-deep); font-weight:650; font-variant-numeric:tabular-nums}
 @media (max-width:900px){ .heroPromise{margin-left:auto; margin-right:auto; text-align:center} }
 
-.tinyWins{display:flex; flex-direction:column; gap:9px; margin-top:6px; animation:riseFade .5s ease both}
+.tinyWins{display:flex; flex-direction:column; gap:9px; margin-top:14px; animation:riseFade .5s ease both}
 .tinyWinsLabel{margin:0 0 2px; font-size:11px; font-weight:650; letter-spacing:.08em; text-transform:uppercase; color:var(--faint)}
 .tinyWinsRow{display:flex; flex-wrap:wrap; gap:8px}
 .tinyWinChip{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:500; color:var(--moss-deep);
@@ -3454,7 +3454,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .pThoughtTag{font-size:10.5px; font-weight:650; color:var(--lilac); letter-spacing:.03em}
 .focusCard{background:linear-gradient(160deg, color-mix(in srgb, var(--pollen-soft) 60%, var(--surface)) 0%, var(--surface) 70%);
   border:1px solid color-mix(in srgb, var(--pollen) 35%, var(--border)); border-radius:20px; padding:14px 18px; box-shadow:var(--sh-sm);
-  display:flex; flex-direction:column; gap:10px; animation:riseFade .5s ease both}
+  display:flex; flex-direction:column; gap:10px; margin-top:24px; animation:riseFade .5s ease both}
 .focusHead{display:flex; align-items:center; justify-content:space-between}
 .focusLabel{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--pollen)}
 .focusClear{border:none; background:transparent; color:var(--faint); font-size:16px; line-height:1; padding:2px 7px; border-radius:8px; transition:all .18s}
