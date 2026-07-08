@@ -932,7 +932,7 @@ export default function Sukoon() {
   };
 
   const exportAllData = () => {
-   const payload = { version: 1, exportedAt: Date.now(), todos, journal, pocket, gratitude, soundOn, theme };
+   const payload = { version: 1, exportedAt: Date.now(), todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, theme };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -2733,7 +2733,6 @@ h3{font-family:'Instrument Serif',serif; font-size:18px}
   font-size:11.5px; font-weight:600; padding:6px 12px; border-radius:999px; transition:all .2s}
 .exportLink:hover{color:var(--ink); border-color:var(--border2)}
 .jHeroActions{display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:14px}
-.jHeroActions{margin-top:12px}
 .rangeToggle{display:inline-flex; gap:4px; margin-top:16px; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:4px}
 .rangePill{border:none; background:transparent; color:var(--muted); font-size:12.5px; font-weight:600; padding:6px 16px; border-radius:999px; transition:all .2s}
 .rangePill.rangeOn{background:var(--ink); color:var(--bg)}
@@ -2874,7 +2873,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
   .nav{order:3; width:100%; justify-content:center; margin-top:4px}
   .page{padding:20px 16px 0}
   h1{font-size:34px}
-  .jHero .exportLink{position:static; display:inline-block; margin-top:10px}
+  .jHeroActions{margin-top:12px}
   .secHeadRight{width:100%; justify-content:space-between}
   .subPanel{margin-left:0}
 }
@@ -2951,8 +2950,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
   content:""; position:absolute; bottom:calc(100% + 4px); left:50%; transform:translateX(-50%);
   border:5px solid transparent; border-top-color:var(--ink); z-index:80; pointer-events:none;
 }
-.tipWrap{display:inline-flex; position:relative}
-@keyframes tipIn{from{opacity:0; transform:translateX(-50%) translateY(4px)}to{opacity:1; transform:translateX(-50%) translateY(0)}}
 .tipWrap{display:inline-flex; position:relative}
 @keyframes tipIn{from{opacity:0; transform:translateX(-50%) translateY(4px)}to{opacity:1; transform:translateX(-50%) translateY(0)}}
 
