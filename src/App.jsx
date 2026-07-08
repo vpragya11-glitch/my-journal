@@ -463,6 +463,7 @@ export default function Sukoon() {
   const [reflectingId, setReflectingId] = useState(null);
   const [memoryOn, setMemoryOn] = useState(false);          // opt-in, off by default
   const [companionMemory, setCompanionMemory] = useState(""); // the distilled digest
+  const [memoryRevealed, setMemoryRevealed] = useState(false);
   const [letters, setLetters] = useState([]); // [{ weekKey, text, createdAt }] newest first
   const [letterComposing, setLetterComposing] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
