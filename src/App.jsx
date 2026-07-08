@@ -2399,9 +2399,9 @@ function LengthTrend({ points }) {
 }
 
 function TimeField({ value, onChange }) {
-  const [open, setOpen] = React.useState(null); // 'h' | 'm' | null
-  const [pendingAmpm, setPendingAmpm] = React.useState("AM");
-  const wrapRef = React.useRef(null);
+  const [open, setOpen] = useState(null); // 'h' | 'm' | null
+  const [pendingAmpm, setPendingAmpm] = useState("AM");
+  const wrapRef = useRef(null);
 
   const has = /^\d{2}:\d{2}$/.test(value || "");
   const h24 = has ? parseInt(value.slice(0, 2), 10) : null;
@@ -2416,7 +2416,7 @@ function TimeField({ value, onChange }) {
     onChange(String(hh).padStart(2, "0") + ":" + String(nmin).padStart(2, "0"));
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) return;
     const onDoc = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(null); };
     const onKey = (e) => { if (e.key === "Escape") setOpen(null); };
