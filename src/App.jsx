@@ -412,6 +412,8 @@ const recurLabel = (recur) => {
   return null;
 };
 const nextRecurType = (type) => ({ none: "daily", daily: "weekdays", weekdays: "custom", custom: "none" }[type] || "none");
+const ENERGY = { low: "🟢", medium: "🟡", high: "🔴" };
+const nextEnergy = (e) => ({ null: "low", low: "medium", medium: "high", high: null }[e ?? "null"] ?? null);
 
 /* ── calendar helpers: Google Calendar link + .ics export ─────────── */
 const pad2 = (n) => String(n).padStart(2, "0");
@@ -513,6 +515,7 @@ export default function Sukoon() {
   const [draft, setDraft] = useState("");
   const [draftCat, setDraftCat] = useState("work");
   const [draftRecur, setDraftRecur] = useState({ type: "none", days: [] });
+   const [draftEnergy, setDraftEnergy] = useState(null); // null | 'low' | 'medium' | 'high'
   const [draftBucket, setDraftBucket] = useState("today");
   const [draftTime, setDraftTime] = useState("");
   const [draftTags, setDraftTags] = useState([]);
@@ -672,11 +675,13 @@ useEffect(() => {
     if (draftTagInput.trim()) draftTagInput.split(",").forEach((p) => { tags = addTagUnique(tags, p); });
     const minOrder = todos.length ? Math.min(...todos.map(orderOf)) : 0;
    setTodos((t) => [{
-      id: uid(), text: v, cat: draftCat, done: false, stamp: Date.now(),
-      recur: draftRecur, doneDays: [], time: draftTime || null, reminderOn: false,
-      tags, order: minOrder - 1, bucket: draftBucket, subtasks: [], isFocus: false,
-    }, ...t]);
-    setDraft(""); setDraftRecur({ type: "none", days: [] }); setDraftTime("");
+  id: uid(), text: v, cat: draftCat, done: false, stamp: Date.now(),
+  recur: draftRecur, doneDays: [], time: draftTime || null, reminderOn: false,
+  tags, order: minOrder - 1, bucket: draftBucket, subtasks: [], isFocus: false,
+  energy: draftEnergy,
+}, ...t]);
+     
+    setDraftEnergy(null); setDraft(""); setDraftRecur({ type: "none", days: [] }); setDraftTime("");
     setDraftTags([]); setDraftTagInput(""); setDraftBucket("today");
     // if the active filter would hide what was just added, clear it so the new intention shows
   const willHide = draftBucket === "today" &&
@@ -724,6 +729,11 @@ useEffect(() => {
     });
     play("tap");
   };
+   const cycleDraftEnergy = () => { setDraftEnergy((e) => nextEnergy(e)); play("tap"); };
+const cycleRowEnergy = (id) => {
+  setTodos((ts) => ts.map((x) => (x.id === id ? { ...x, energy: nextEnergy(x.energy) } : x)));
+  play("tap");
+};
   const toggleDraftDay = (d) => {
     setDraftRecur((r) => {
       const days = new Set(r.days || []);
@@ -1212,13 +1222,25 @@ const saveThought = () => {
 
   /* "on this day" — a past entry written on this same day-of-month, most recent first */
   const onThisDay = useMemo(() => {
-    const now = new Date();
-    const matches = journal.filter((j) => {
-      const d = new Date(j.stamp);
-      return d.getDate() === now.getDate() && !isToday(j.stamp);
-    }).sort((a, b) => b.stamp - a.stamp);
-    return matches[0] || null;
-  }, [journal]);
+  const now = new Date();
+  const byDate = journal.filter((j) => {
+    const d = new Date(j.stamp);
+    return d.getDate() === now.getDate() && !isToday(j.stamp);
+  }).sort((a, b) => b.stamp - a.stamp);
+  if (byDate[0]) return { ...byDate[0], matchType: "date" };
+
+  // fallback: most recent past entry sharing today's recurring theme —
+  // the tag the person has returned to most across all entries
+  const tagCounts = {};
+  journal.forEach((j) => (j.tags || []).forEach((t) => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
+  const topTag = Object.entries(tagCounts).sort((a, b) => b[1] - a[1])[0];
+  if (topTag && topTag[1] >= 2) {
+    const byTheme = journal.filter((j) => !isToday(j.stamp) && (j.tags || []).includes(topTag[0]))
+      .sort((a, b) => b.stamp - a.stamp);
+    if (byTheme[0]) return { ...byTheme[0], matchType: "theme", theme: topTag[0] };
+  }
+  return null;
+}, [journal]);
 
   const moodTrend = useMemo(() => (
     [...journal].filter((j) => j.mood).sort((a, b) => a.stamp - b.stamp).slice(-14)
@@ -1288,6 +1310,47 @@ const saveThought = () => {
     if (best && best[1] >= 4) bits.push(`You felt lightest on ${best[0]}.`);
     return bits;
   }, [journal]);
+
+   /* local, rule-based correlations — no AI call, purely descriptive over existing data */
+const patterns = useMemo(() => {
+  const lines = [];
+  const withMood = journal.filter((j) => j.mood);
+  if (withMood.length >= 6) {
+    const byDow = Array.from({ length: 7 }, () => []);
+    withMood.forEach((j) => byDow[new Date(j.stamp).getDay()].push(MOOD_VALUE[j.mood] || 3));
+    const avgs = byDow.map((arr) => (arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null));
+    const withCount = avgs.map((a, i) => ({ a, i, n: byDow[i].length })).filter((x) => x.a !== null && x.n >= 2);
+    if (withCount.length >= 3) {
+      const best = withCount.reduce((a, b) => (b.a > a.a ? b : a));
+      const worst = withCount.reduce((a, b) => (b.a < a.a ? b : a));
+      const DAYN = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
+      if (best.a - worst.a >= 0.6) lines.push(`Your mood tends to run lighter on ${DAYN[best.i]}.`);
+    }
+  }
+  const withLen = journal.filter((j) => j.text.trim());
+  if (withLen.length >= 6) {
+    const byDow = Array.from({ length: 7 }, () => []);
+    withLen.forEach((j) => byDow[new Date(j.stamp).getDay()].push(j.text.trim().split(/\s+/).length));
+    const avgs = byDow.map((arr, i) => ({ a: arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null, i, n: arr.length }))
+      .filter((x) => x.a !== null && x.n >= 2);
+    if (avgs.length >= 3) {
+      const overall = withLen.reduce((s, j) => s + j.text.trim().split(/\s+/).length, 0) / withLen.length;
+      const best = avgs.reduce((a, b) => (b.a > a.a ? b : a));
+      const DAYN = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
+      if (best.a >= overall * 1.4) lines.push(`You write noticeably longer entries on ${DAYN[best.i]}.`);
+    }
+  }
+  const doneWithDates = todos.filter((t) => t.doneAt);
+  if (doneWithDates.length >= 10) {
+    const byDow = Array.from({ length: 7 }, () => 0);
+    doneWithDates.forEach((t) => byDow[new Date(t.doneAt).getDay()]++);
+    const max = Math.max(...byDow);
+    const idx = byDow.indexOf(max);
+    const DAYN = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
+    if (max >= doneWithDates.length * 0.22) lines.push(`You complete the most intentions on ${DAYN[idx]}.`);
+  }
+  return lines;
+}, [journal, todos]);
 
    /* the week just ended, distilled — facts only, omit what's absent */
   const lastWeekDigest = useMemo(() => {
@@ -1585,6 +1648,10 @@ const tinyWins = useMemo(() => {
                       onClick={cycleDraftRecur}>🔁 {recurLabel(draftRecur) || "Repeat"}</button>
                     <button className={"cat someday" + (draftBucket === "someday" ? " catOn" : "")} data-tip="Save for later, pull in when ready"
                       onClick={() => { setDraftBucket((b) => (b === "someday" ? "today" : "someday")); play("nav"); }}>🗂 Someday</button>
+                     <button className={"cat energy" + (draftEnergy ? " catOn" : "")} data-tip="Cycle energy: none → 🟢 low → 🟡 medium → 🔴 high"
+  onClick={cycleDraftEnergy}>
+  {draftEnergy ? ENERGY[draftEnergy] : "⚪"} {draftEnergy ? draftEnergy : "Energy"}
+</button>
                     <span className="tipWrap" data-tip="Optional time — enables calendar export and reminders">
                       <TimeField value={draftTime} onChange={setDraftTime} />
                     </span>
@@ -1708,6 +1775,12 @@ const tinyWins = useMemo(() => {
                           </button>
                         )}
                         {t.time && <span className="timeBadge">{t.time}</span>}
+                           {t.energy && (
+  <button className="rowIcon energyBadge" data-tip={`Energy: ${t.energy} — click to cycle`}
+    onClick={(e) => { e.stopPropagation(); cycleRowEnergy(t.id); }}>
+    {ENERGY[t.energy]}
+  </button>
+)}
                         <span className={"tag " + t.cat}>{t.cat}</span>
                         <div className="rowActions">
                         {isRecurringItem(t) ? (
@@ -1936,11 +2009,15 @@ const tinyWins = useMemo(() => {
             </div>
 
             {onThisDay && (
-              <div className="onThisDay">
-                <p className="onThisDayLabel">On this day · {fmtDay(onThisDay.stamp)}, {new Date(onThisDay.stamp).getFullYear()}</p>
-                <p className="onThisDayText">{onThisDay.mood ? onThisDay.mood + " " : ""}{onThisDay.text.slice(0, 180)}{onThisDay.text.length > 180 ? "…" : ""}</p>
-              </div>
-            )}
+  <div className="onThisDay">
+    <p className="onThisDayLabel">
+      {onThisDay.matchType === "date"
+        ? `On this day · ${fmtDay(onThisDay.stamp)}, ${new Date(onThisDay.stamp).getFullYear()}`
+        : `A past “${onThisDay.theme}” entry · ${fmtDay(onThisDay.stamp)}`}
+    </p>
+    <p className="onThisDayText">{onThisDay.mood ? onThisDay.mood + " " : ""}{onThisDay.text.slice(0, 180)}{onThisDay.text.length > 180 ? "…" : ""}</p>
+  </div>
+)}
 
             <div className="jCompose">
               <div className="moodRow">
@@ -2104,13 +2181,13 @@ const tinyWins = useMemo(() => {
                   <span className="chip"><b>{streak}</b> day streak {streak > 0 ? "🌱" : ""}</span>
                 </div>
 
-                 {weekStory.length > 0 && (
-                  <div className="weekStory">
-                    {weekStory.map((line, i) => <p key={i} className="weekStoryLine">{line}</p>)}
-                    <p className="weekStoryClose">Keep protecting your peace.</p>
-                  </div>
-                )}
-
+                 {(weekStory.length > 0 || patterns.length > 0) && (
+  <div className="weekStory">
+    {weekStory.map((line, i) => <p key={i} className="weekStoryLine">{line}</p>)}
+    {patterns.map((line, i) => <p key={"p" + i} className="weekStoryLine">{line}</p>)}
+    <p className="weekStoryClose">Keep protecting your peace.</p>
+  </div>
+)}
                 <div className="reviewCard">
                   <h3>Days, at a glance</h3>
                   <div className="weekBars">
@@ -3544,4 +3621,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .ritualText b{font-size:13.5px; font-weight:600; color:var(--ink)}
 .ritualText small{font-size:11px; color:var(--muted); font-style:italic; font-family:'Instrument Serif',serif}
 @media (max-width:560px){ .ritualRow{flex-direction:column} .ritualChip{width:100%} }
+.cat.energy.catOn{background:var(--surface2); border-color:var(--border2)}
+.energyBadge{font-size:13px; opacity:1}
 `;
