@@ -1539,7 +1539,7 @@ export default function Sukoon() {
                         return (
                         <li key={t.id} className="rowGroup">
                         <div
-                          className={"row " + t.cat + (t.done ? " done" : "") + (dragId === t.id ? " dragging" : "") + (dragOverId === t.id && dragId && dragId !== t.id ? " dragOver" : "")}
+                          className={"row " + t.cat + (t.done ? " done" : "") + (editingId === t.id ? " editing" : "") + (dragId === t.id ? " dragging" : "") + (dragOverId === t.id && dragId && dragId !== t.id ? " dragOver" : "")}
                           onClick={() => { if (editingId !== t.id) toggleTodo(t.id); }}
                           onDragOver={onRowDragOver(t.id)}
                           onDrop={onRowDrop(t.id)}>
@@ -3262,4 +3262,38 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .timeOpt{border:none; background:transparent; font-family:'Instrument Serif',serif; font-size:14px; color:var(--ink); padding:7px 0; border-radius:8px; cursor:pointer; transition:background .12s, color .12s}
 .timeOpt:hover{background:color-mix(in srgb, var(--moss) 16%, transparent)}
 .timeOptOn{background:var(--moss); color:var(--bg); font-weight:600}
+/* ── row density: keep resting rows compact, reveal actions on hover ──
+   Pure-action icons used to reserve space at all times, so a row with tags,
+   a time and a category spilled its icons onto a ragged second line. Now they
+   collapse to zero width at rest and ease open on hover/focus; informational
+   chips (tags, time, category, an active reminder, the repeat cadence) stay
+   put. Touch devices — no hover — keep the icons visible so they're reachable. */
+@media (hover: hover) {
+  .row .rowIcon:not(.recurBadge):not(.reminderOn),
+  .row .x {
+    max-width: 0; padding-left: 0; padding-right: 0;
+    opacity: 0; overflow: hidden; pointer-events: none;
+    transition: max-width .22s ease, opacity .18s ease, padding .2s ease;
+  }
+  .row:not(.editing):hover .rowIcon:not(.recurBadge):not(.reminderOn),
+  .row:not(.editing):focus-within .rowIcon:not(.recurBadge):not(.reminderOn) {
+    max-width: 40px; padding-left: 6px; padding-right: 6px; opacity: .9; pointer-events: auto;
+  }
+  .row:not(.editing):hover .x,
+  .row:not(.editing):focus-within .x {
+    max-width: 36px; padding-left: 8px; padding-right: 8px; opacity: .85; pointer-events: auto;
+  }
+}
+
+/* ── editing a row: the field takes the whole line, everything else steps
+   aside, so the input can never be squeezed into a collapsed sliver ── */
+.row.editing { flex-wrap: nowrap; }
+.row.editing .rowEdit { flex: 1 1 auto; min-width: 0; }
+.row.editing .rowTag,
+.row.editing .rowTagInput,
+.row.editing .stepsBadge,
+.row.editing .timeBadge,
+.row.editing .tag,
+.row.editing .rowIcon,
+.row.editing .x { display: none; }
 `;
