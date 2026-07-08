@@ -873,7 +873,7 @@ export default function Sukoon() {
     try {
       const payload = { text: j.text, mood: j.mood ? MOOD_NAME[j.mood] : null };
       if (memoryOn) payload.memory = companionMemory || ""; // presence of this key = memory mode
-      const { data, error } = await supabase.functions.invoke("clever-function", { body: payload });
+      const { data, error } = await supabase.functions.invoke("journal-companion", { body: payload });
       if (error) throw error;
       const line = data && data.line;
       if (line) {
