@@ -432,8 +432,9 @@ export default function Sukoon() {
   const [reflectingId, setReflectingId] = useState(null);
   const [memoryOn, setMemoryOn] = useState(false);          // opt-in, off by default
   const [companionMemory, setCompanionMemory] = useState(""); // the distilled digest
-  const [weeklyLetter, setWeeklyLetter] = useState(null); // { weekKey, text, createdAt }
+  const [letters, setLetters] = useState([]); // [{ weekKey, text, createdAt }] newest first
   const [letterComposing, setLetterComposing] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
    const [ambient, setAmbient] = useState(null); // active scene key, or null
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null); // { msg, undo }
@@ -507,7 +508,8 @@ export default function Sukoon() {
           if (typeof d.companionOn === "boolean") setCompanionOn(d.companionOn);
           if (typeof d.memoryOn === "boolean") setMemoryOn(d.memoryOn);
           if (typeof d.companionMemory === "string") setCompanionMemory(d.companionMemory);
-          if (d.weeklyLetter && typeof d.weeklyLetter === "object") setWeeklyLetter(d.weeklyLetter);
+          if (Array.isArray(d.letters)) setLetters(d.letters);
+          else if (d.weeklyLetter && typeof d.weeklyLetter === "object") setLetters([d.weeklyLetter]); // migrate old single letter
           if (d.theme) setTheme(d.theme);
           found = true;
         }
@@ -544,12 +546,11 @@ export default function Sukoon() {
   useEffect(() => {
     if (!loaded) return;
     const t = setTimeout(async () => {
-     try { await store.set(STORAGE_KEY, JSON.stringify({ todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, weeklyLetter, theme })); }
+     try { await store.set(STORAGE_KEY, JSON.stringify({ todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, letters, theme })); }
       catch (e) { console.error("save failed", e); }
     }, 400);
     return () => clearTimeout(t);
-  }, [todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, weeklyLetter, theme, loaded]);
-
+  }, [todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, letters, theme, loaded]);
   /* schedule gentle reminder notifications for intentions with a time set,
      while this tab stays open — browsers don't allow background delivery otherwise */
   useEffect(() => {
@@ -935,7 +936,7 @@ export default function Sukoon() {
   };
 
   const exportAllData = () => {
-   const payload = { version: 1, exportedAt: Date.now(), todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, theme };
+   const payload = { version: 1, exportedAt: Date.now(), todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, letters, theme };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1216,8 +1217,8 @@ export default function Sukoon() {
   useEffect(() => {
     if (!loaded || !companionOn || letterComposing) return;
     const pk = prevWeekKey();
-    if (weeklyLetter && weeklyLetter.weekKey === pk) return; // already have this week's
-    if (lastWeekDigest.activeCount < 2) return;              // week didn't earn one
+    if (letters.some((l) => l.weekKey === pk)) return; // already have this week's
+    if (lastWeekDigest.activeCount < 2) return;         // week didn't earn one
     (async () => {
       setLetterComposing(true);
       let text = null;
@@ -1232,10 +1233,10 @@ export default function Sukoon() {
       if (!text) { // offline / failure fallback — plain but never absent
         text = `This week, you showed up on ${lastWeekDigest.activeCount} of seven days — and that steadiness is its own quiet kind of care. Whatever the week asked of you, you met it in your own unhurried way.\n\nBe gentle with yourself as the next one begins.`;
       }
-      setWeeklyLetter({ weekKey: pk, text, createdAt: Date.now() });
+      setLetters((prev) => [{ weekKey: pk, text, label: lastWeekDigest.label, createdAt: Date.now() }, ...prev]);
       setLetterComposing(false);
     })();
-  }, [loaded, companionOn, memoryOn, companionMemory, lastWeekDigest, weeklyLetter, letterComposing]);
+  }, [loaded, companionOn, memoryOn, companionMemory, lastWeekDigest, letters, letterComposing]);
 
   /* monthly rollup for the Review screen's Month view */
   const reviewMonthStats = useMemo(() => {
@@ -1885,14 +1886,36 @@ export default function Sukoon() {
         {/* ══════════ REVIEW ══════════ */}
         {view === "review" && (
           <section className="narrow">
-            {companionOn && weeklyLetter && weeklyLetter.weekKey === prevWeekKey() && (
-              <div className="letterCard">
-                <p className="letterEyebrow">A letter for your week · {lastWeekDigest.label}</p>
-                {weeklyLetter.text.split("\n").filter(Boolean).map((para, i) => (
-                  <p key={i} className="letterBody">{para}</p>
-                ))}
-                <span className="letterSeal"><LeafMark /></span>
-              </div>
+            {companionOn && letters.length > 0 && (
+              <>
+                <div className="letterCard">
+                  <p className="letterEyebrow">A letter for your week · {letters[0].label || lastWeekDigest.label}</p>
+                  {letters[0].text.split("\n").filter(Boolean).map((para, i) => (
+                    <p key={i} className="letterBody">{para}</p>
+                  ))}
+                  <span className="letterSeal"><LeafMark /></span>
+                </div>
+                {letters.length > 1 && (
+                  <div className="archiveCard">
+                    <button className="archiveHead" onClick={() => { setArchiveOpen((o) => !o); play("nav"); }}>
+                      <span>🌿 Past letters <b>{letters.length - 1}</b></span>
+                      <span className={"archiveChevron" + (archiveOpen ? " archiveChevronOpen" : "")}>›</span>
+                    </button>
+                    {archiveOpen && (
+                      <div className="archiveList">
+                        {letters.slice(1).map((l) => (
+                          <div key={l.weekKey} className="archiveItem">
+                            <p className="archiveItemLabel">{l.label || "an earlier week"}</p>
+                            {l.text.split("\n").filter(Boolean).map((para, i) => (
+                              <p key={i} className="archiveItemBody">{para}</p>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
             <div className="jHero">
               <p className="eyebrow">{reviewRange === "week" ? "This week" : reviewMonthStats.label}</p>
@@ -3110,4 +3133,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .letterBody{margin:0; font-family:'Instrument Serif',serif; font-size:18px; line-height:1.7; color:var(--ink)}
 .letterSeal{align-self:flex-end; width:24px; height:24px; color:var(--moss); opacity:.7}
 .letterSeal .leaf{width:24px; height:24px}
+/* letter archive — a quiet shelf of past letters */
+.archiveCard{border:1px solid var(--border); background:color-mix(in srgb, var(--pollen-soft) 30%, var(--surface)); border-radius:16px; overflow:hidden}
+.archiveHead{width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; border:none; background:transparent; padding:13px 18px; font-size:13px; font-weight:600; color:var(--muted)}
+.archiveHead b{color:var(--ink); font-variant-numeric:tabular-nums}
+.archiveChevron{transition:transform .2s; color:var(--faint)}
+.archiveChevronOpen{transform:rotate(90deg)}
+.archiveList{padding:0 18px 16px; display:flex; flex-direction:column; gap:16px}
+.archiveItem{padding-top:14px; border-top:1px solid var(--border)}
+.archiveItemLabel{margin:0 0 8px; font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--pollen)}
+.archiveItemBody{margin:0 0 6px; font-family:'Instrument Serif',serif; font-size:15px; line-height:1.65; color:var(--ink)}
 `;
