@@ -310,6 +310,37 @@ const dailyAffirmation = () => {
   return pool[dayOfYear() % pool.length];
 };
 
+/* ── memory recall: echo a real past journal line on the Today hero.
+   Deterministic per day (like the affirmation) so it's stable within a day
+   but turns over daily. Only ever shows a genuine old entry — never
+   fabricates. Tagged, longer entries are preferred as more intentional. ── */
+const MONTHN = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"];
+const recallPhrase = (stamp) => {
+  const days = Math.floor((Date.now() - stamp) / 86400000);
+  if (days >= 330) return "A year ago, you wrote:";
+  return `Back in ${MONTHN[new Date(stamp).getMonth()]}, you wrote:`;
+};
+const recallExcerpt = (text) => {
+  const clean = text.trim().replace(/\s+/g, " ");
+  if (clean.length <= 90) return clean;
+  const cut = clean.slice(0, 90);
+  const at = cut.lastIndexOf(" ");
+  return (at > 40 ? cut.slice(0, at) : cut).trim() + "…";
+};
+const pickRecall = (journal) => {
+  const MIN_AGE = 30 * 86400000; // at least a month old to feel like memory
+  const now = Date.now();
+  const old = journal.filter(
+    (j) => j.text && j.text.trim().length >= 24 && (now - j.stamp) >= MIN_AGE
+  );
+  if (!old.length) return null;
+  const tagged = old.filter((j) => (j.tags || []).length);
+  const pool = tagged.length ? tagged : old;
+  const ordered = [...pool].sort((a, b) => a.stamp - b.stamp); // oldest first
+  return ordered[dayOfYear() % ordered.length];
+};
+
 /* little lines that celebrate a small win, chosen at random */
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const DONE_LINES = [
@@ -572,6 +603,7 @@ useEffect(() => {
   const reminderTimers = useRef({});
   const importInputRef = useRef(null);
   const starters = useMemo(() => todaysStarters(), []);
+   const recall = useMemo(() => pickRecall(journal), [journal]);
 
   /* load / persist */
   useEffect(() => {
@@ -1577,6 +1609,14 @@ const tinyWins = useMemo(() => {
                 <h1>{GREET[pod]} <em>Pragya</em><span className="period">.</span></h1>
                 <p className="sub">{SUBLINE[pod]}</p>
                <p className="affirmation"><span className="affirmationMark">✦</span>{dailyAffirmation()}</p>
+                 {recall && (
+                  <button className="recall" onClick={() => goView("journal")} data-tip="Open your journal">
+                    <span className="recallMark">❝</span>
+                    <span className="recallText">
+                      <b>{recallPhrase(recall.stamp)}</b> <em>{recallExcerpt(recall.text)}</em>
+                    </span>
+                  </button>
+                )}
                 {weekStats.totalDone > 0 && (
                   <p className="heroPromise">You've kept <b>{weekStats.totalDone}</b> promise{weekStats.totalDone === 1 ? "" : "s"} to yourself this week.{pendingAll.length > 0 ? ` ${pendingAll.length === 1 ? "One gentle intention remains" : `${pendingAll.length} gentle intentions remain`}.` : " The slate is clear."}</p>
                 )}
@@ -3362,6 +3402,17 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .affirmation{margin:16px 0 2px; font-family:'Instrument Serif',serif; font-style:italic; font-size:clamp(17px,2vw,20px);
   line-height:1.5; color:var(--moss-deep); display:flex; align-items:baseline; gap:9px; max-width:42ch}
 .affirmationMark{font-style:normal; font-size:12px; color:var(--season); flex:none; transform:translateY(-1px)}
+
+/* memory recall — a quiet echo of a real past entry; tapping opens the journal */
+.recall{margin:14px 0 2px; display:flex; align-items:flex-start; gap:9px; text-align:left;
+  border:none; background:transparent; padding:0; cursor:pointer; max-width:46ch;
+  color:var(--muted); animation:riseFade .6s ease both; transition:color .2s}
+.recall:hover{color:var(--ink)}
+.recallMark{font-family:'Instrument Serif',serif; font-size:20px; line-height:1; color:var(--season); flex:none; transform:translateY(1px)}
+.recallText{font-size:14.5px; line-height:1.6}
+.recallText b{font-weight:600; color:var(--moss-deep)}
+.recallText em{font-family:'Instrument Serif',serif; font-style:italic; color:var(--ink)}
+@media (max-width:900px){ .recall{justify-content:center; margin-left:auto; margin-right:auto; max-width:38ch} }
 
 /* the garden — a featured, tinted card so it reads apart from the plain surfaces */
 .gardenCard{position:relative; background:linear-gradient(165deg, color-mix(in srgb, var(--moss-soft) 55%, var(--surface)) 0%, var(--surface) 62%);
