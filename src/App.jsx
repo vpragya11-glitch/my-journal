@@ -2399,10 +2399,14 @@ function LengthTrend({ points }) {
 }
 
 function TimeField({ value, onChange }) {
+  const [open, setOpen] = React.useState(null); // 'h' | 'm' | null
+  const [pendingAmpm, setPendingAmpm] = React.useState("AM");
+  const wrapRef = React.useRef(null);
+
   const has = /^\d{2}:\d{2}$/.test(value || "");
   const h24 = has ? parseInt(value.slice(0, 2), 10) : null;
   const min = has ? value.slice(3, 5) : "";
-  const ampm = h24 === null ? "AM" : h24 >= 12 ? "PM" : "AM";
+  const ampm = h24 === null ? pendingAmpm : h24 >= 12 ? "PM" : "AM";
   const h12 = h24 === null ? "" : String(((h24 + 11) % 12) + 1);
 
   const compose = (nh12, nmin, nap) => {
@@ -2412,27 +2416,55 @@ function TimeField({ value, onChange }) {
     onChange(String(hh).padStart(2, "0") + ":" + String(nmin).padStart(2, "0"));
   };
 
+  React.useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(null); };
+    const onKey = (e) => { if (e.key === "Escape") setOpen(null); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+  }, [open]);
+
   const hours = Array.from({ length: 12 }, (_, i) => String(i + 1));
   const mins = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
 
+  const pickHour = (h) => { compose(h, min || "00", ampm); setOpen("m"); };
+  const pickMin = (m) => { compose(h12 || "12", m, ampm); setOpen(null); };
+  const toggleAmpm = () => {
+    const na = ampm === "AM" ? "PM" : "AM";
+    if (has) compose(h12, min, na); else setPendingAmpm(na);
+  };
+  const clear = () => { onChange(""); setPendingAmpm("AM"); setOpen(null); };
+
   return (
-    <div className={"timeField" + (has ? " timeFieldSet" : "")}>
-      <select className="timeSel" value={h12} onChange={(e) => compose(e.target.value, min || "00", ampm)} aria-label="Hour">
-        <option value="">––</option>
-        {hours.map((h) => <option key={h} value={h}>{h}</option>)}
-      </select>
-      <span className="timeColon">:</span>
-      <select className="timeSel" value={min} onChange={(e) => compose(h12 || "12", e.target.value, ampm)} aria-label="Minute">
-        <option value="">––</option>
-        {mins.map((m) => <option key={m} value={m}>{m}</option>)}
-      </select>
-      <button type="button" className="timeAmpm" onClick={() => compose(h12 || "12", min || "00", ampm === "AM" ? "PM" : "AM")} disabled={!has} aria-label="Toggle AM/PM">
-        {ampm}
+    <div className={"timeField" + (has ? " timeFieldSet" : "")} ref={wrapRef}>
+      <button type="button" className="timeSlot" onClick={() => setOpen(open === "h" ? null : "h")} aria-label="Hour">
+        {h12 || "––"}
       </button>
+      <span className="timeColon">:</span>
+      <button type="button" className="timeSlot" onClick={() => setOpen(open === "m" ? null : "m")} aria-label="Minute">
+        {min || "––"}
+      </button>
+      <button type="button" className="timeAmpm" onClick={toggleAmpm} aria-label="Toggle AM/PM">{ampm}</button>
+      {has && <button type="button" className="timeClear" onClick={clear} aria-label="Clear time">×</button>}
+
+      {open && (
+        <div className="timePop">
+          {(open === "h" ? hours : mins).map((v) => {
+            const active = open === "h" ? v === h12 : v === min;
+            return (
+              <button key={v} type="button"
+                className={"timeOpt" + (active ? " timeOptOn" : "")}
+                onClick={() => (open === "h" ? pickHour(v) : pickMin(v))}>
+                {v}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
-
 /* ═══ small pieces ═══ */
 function LeafMark() {
   return (
@@ -3177,14 +3209,26 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .archiveItem{padding-top:14px; border-top:1px solid var(--border)}
 .archiveItemLabel{margin:0 0 8px; font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--pollen)}
 .archiveItemBody{margin:0 0 6px; font-family:'Instrument Serif',serif; font-size:15px; line-height:1.65; color:var(--ink)}
-/* time field — replaces the native picker, in Sukoon's language */
-.timeField{display:inline-flex; align-items:center; gap:2px; padding:4px 6px; border:1px solid var(--border); border-radius:999px; background:var(--surface); transition:border-color .2s, background .2s}
+/* time field — fully custom, matches Sukoon open and closed */
+.timeField{position:relative; display:inline-flex; align-items:center; gap:2px; padding:4px 6px; border:1px solid var(--border); border-radius:999px; background:var(--surface); transition:border-color .2s, background .2s}
 .timeField.timeFieldSet{border-color:color-mix(in srgb, var(--moss) 40%, var(--border)); background:var(--moss-soft)}
-.timeSel{border:none; background:transparent; font-family:'Instrument Serif',serif; font-size:15px; color:var(--ink); padding:2px 4px; border-radius:8px; cursor:pointer; appearance:none; text-align:center; transition:background .15s}
-.timeSel:hover{background:color-mix(in srgb, var(--moss) 14%, transparent)}
-.timeSel:focus-visible{outline:none; background:color-mix(in srgb, var(--moss) 18%, transparent)}
+.timeSlot{border:none; background:transparent; font-family:'Instrument Serif',serif; font-size:15px; color:var(--ink); padding:2px 6px; border-radius:8px; cursor:pointer; min-width:22px; text-align:center; transition:background .15s}
+.timeSlot:hover{background:color-mix(in srgb, var(--moss) 14%, transparent)}
 .timeColon{font-family:'Instrument Serif',serif; font-size:15px; color:var(--muted); margin:0 -1px}
 .timeAmpm{border:none; background:transparent; font-family:'Satoshi',sans-serif; font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--moss-deep); padding:4px 8px; border-radius:999px; cursor:pointer; transition:background .15s}
-.timeAmpm:hover:not(:disabled){background:color-mix(in srgb, var(--moss) 16%, transparent)}
-.timeAmpm:disabled{color:var(--faint); cursor:default}
+.timeAmpm:hover{background:color-mix(in srgb, var(--moss) 16%, transparent)}
+.timeClear{border:none; background:transparent; color:var(--faint); font-size:15px; line-height:1; padding:2px 5px; border-radius:999px; cursor:pointer; transition:color .15s, background .15s}
+.timeClear:hover{color:var(--rose-deep); background:color-mix(in srgb, var(--rose) 14%, transparent)}
+
+.timePop{position:absolute; top:calc(100% + 8px); left:0; z-index:90;
+  display:grid; grid-template-columns:repeat(3, 1fr); gap:2px;
+  max-height:184px; overflow-y:auto; padding:8px;
+  background:var(--surface); border:1px solid var(--border); border-radius:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.12); animation:tipIn .16s ease both;
+  scrollbar-width:thin; scrollbar-color:var(--border) transparent}
+.timePop::-webkit-scrollbar{width:7px}
+.timePop::-webkit-scrollbar-thumb{background:var(--border); border-radius:99px}
+.timeOpt{border:none; background:transparent; font-family:'Instrument Serif',serif; font-size:14px; color:var(--ink); padding:7px 0; border-radius:8px; cursor:pointer; transition:background .12s, color .12s}
+.timeOpt:hover{background:color-mix(in srgb, var(--moss) 16%, transparent)}
+.timeOptOn{background:var(--moss); color:var(--bg); font-weight:600}
 `;
