@@ -639,10 +639,10 @@ useEffect(() => {
     let tags = draftTags;
     if (draftTagInput.trim()) draftTagInput.split(",").forEach((p) => { tags = addTagUnique(tags, p); });
     const minOrder = todos.length ? Math.min(...todos.map(orderOf)) : 0;
-    setTodos((t) => [{
+   setTodos((t) => [{
       id: uid(), text: v, cat: draftCat, done: false, stamp: Date.now(),
       recur: draftRecur, doneDays: [], time: draftTime || null, reminderOn: false,
-      tags, order: minOrder - 1, bucket: draftBucket, subtasks: [],
+      tags, order: minOrder - 1, bucket: draftBucket, subtasks: [], isFocus: false,
     }, ...t]);
     setDraft(""); setDraftRecur({ type: "none", days: [] }); setDraftTime("");
     setDraftTags([]); setDraftTagInput(""); setDraftBucket("today");
@@ -656,7 +656,7 @@ useEffect(() => {
   };
   const addStarter = (s) => {
     const minOrder = todos.length ? Math.min(...todos.map(orderOf)) : 0;
-    setTodos((t) => [{ id: uid(), text: s.text, cat: s.cat, done: false, stamp: Date.now(), recur: { type: "none", days: [] }, doneDays: [], time: null, reminderOn: false, tags: [], order: minOrder - 1, bucket: "today", subtasks: [] }, ...t]);
+    setTodos((t) => [{ id: uid(), text: s.text, cat: s.cat, done: false, stamp: Date.now(), recur: { type: "none", days: [] }, doneDays: [], time: null, reminderOn: false, tags: [], order: minOrder - 1, bucket: "today", subtasks: [], isFocus: false }, ...t]);
     play("add"); flash("Added — small is still a start");
   };
   const commitDraftTag = () => {
@@ -734,6 +734,7 @@ useEffect(() => {
       subtasks: (item.subtasks || []).map((s) => ({ ...s, id: uid(), done: false })),
       stamp: Date.now(),
       order: minOrder - 1,
+      isFocus: false,
     };
     setTodos((t) => [copy, ...t]);
     play("add"); flash("Duplicated — ready for next time");
@@ -813,6 +814,15 @@ useEffect(() => {
     setTodos((ts) => ts.map((x) => (x.id === id ? { ...x, bucket: "today", order: minOrder - 1, stamp: Date.now() } : x)));
     play("add"); flash("Pulled into today");
   };
+
+   /* today's focus: one pinned intention, separate from the general list. Setting one clears any other. */
+const toggleFocus = (id) => {
+  setTodos((ts) => ts.map((x) => {
+    if (x.id === id) return { ...x, isFocus: !x.isFocus };
+    return x.isFocus ? { ...x, isFocus: false } : x;
+  }));
+  play("tap");
+};
 
   /* drag-to-reorder: fractional ordering so we never touch every row, just the one moved */
   const reorderTodo = (draggedId, targetId) => {
@@ -1072,6 +1082,7 @@ const saveThought = () => {
   const todayTodos = todos.filter((t) => (t.bucket || "today") === "today");
   const somedayTodos = todos.filter((t) => t.bucket === "someday");
   const pendingAll = todayTodos.filter((t) => !t.done);
+   const focusTodo = todayTodos.find((t) => t.isFocus && !t.done) || null;
   const visible = todayTodos.filter((t) => (filter === "all" || t.cat === filter) && (!tagFilter || (t.tags || []).includes(tagFilter)));
   const allTags = useMemo(() => {
     const set = new Set();
@@ -1177,7 +1188,13 @@ const saveThought = () => {
   const filteredJournal = useMemo(() => {
     const q = journalQuery.trim().toLowerCase();
     return journal.filter((j) => {
-      const matchesQuery = !q || j.text.toLowerCase().includes(q) || (j.prompt && j.prompt.toLowerCase().includes(q));
+      const moodName = j.mood ? (MOOD_NAME[j.mood] || "").toLowerCase() : "";
+      const tagText = (j.tags || []).join(" ").toLowerCase();
+      const matchesQuery = !q
+        || j.text.toLowerCase().includes(q)
+        || (j.prompt && j.prompt.toLowerCase().includes(q))
+        || moodName.includes(q)
+        || tagText.includes(q);
       const matchesTag = !journalTagFilter || (j.tags || []).includes(journalTagFilter);
       return matchesQuery && matchesTag;
     });
@@ -1464,6 +1481,7 @@ const tinyWins = useMemo(() => {
               <BreathCard play={play} />
             </section>
 
+            <FocusCard item={focusTodo} onToggle={() => toggleTodo(focusTodo.id)} onClear={() => toggleFocus(focusTodo.id)} />
             <TinyWins items={tinyWins} />
 
             <section className="grid">
@@ -1643,6 +1661,10 @@ const tinyWins = useMemo(() => {
                             data-tip={t.reminderOn ? "Reminder on — click to turn off" : "Set a gentle reminder"}
                             onClick={(e) => { e.stopPropagation(); toggleReminder(t.id); }}><Icon name="bell" /></button>
                         )}
+                           
+                        <button className={"rowIcon" + (t.isFocus ? " focusOn" : "")}
+                          data-tip={t.isFocus ? "Remove as today's one thing" : "Make this today's one thing"}
+                          onClick={(e) => { e.stopPropagation(); toggleFocus(t.id); }} aria-label="Toggle today's focus"><Icon name="star" /></button>
                         <button className="rowIcon" data-tip="Save for someday instead"
                           onClick={(e) => { e.stopPropagation(); sendToSomeday(t.id); }} aria-label="Move to someday"><Icon name="bookmark" /></button>
                         <button className="rowIcon" data-tip="Duplicate — same thing, next time"
@@ -1896,8 +1918,8 @@ const tinyWins = useMemo(() => {
                   <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
                   <path d="M20 20l-4.35-4.35" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
                 </svg>
-                <input value={journalQuery} onChange={(e) => setJournalQuery(e.target.value)}
-                  placeholder="Search your journal…" aria-label="Search journal entries" />
+               <input value={journalQuery} onChange={(e) => setJournalQuery(e.target.value)}
+                  placeholder="Search your journal… try a mood, like “heavy”" aria-label="Search journal entries" />
                 {journalQuery && <button className="jSearchClear" onClick={() => setJournalQuery("")} aria-label="Clear search">×</button>}
               </div>
             )}
@@ -2564,6 +2586,7 @@ function Icon({ name }) {
     steps: <><path d="M4 7l1.6 1.6L8.2 6"/><path d="M12 7h8"/><path d="M4 13l1.6 1.6L8.2 11"/><path d="M12 13h8"/><path d="M12 18h6"/></>,
     calendar: <><rect x="4" y="5" width="16" height="15" rx="2.4"/><path d="M4 9.5h16"/><path d="M8.5 3.5v3M15.5 3.5v3"/></>,
     bell: <><path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 4.4 1.8 5.5 1.8 5.5H4.7S6.5 14.4 6.5 10Z"/><path d="M10.4 19a1.7 1.7 0 0 0 3.2 0"/></>,
+    star: <path d="M12 3.4l2.7 5.6 6.1.9-4.4 4.4 1 6.1L12 17.3l-5.4 3.1 1-6.1-4.4-4.4 6.1-.9L12 3.4Z"/>,
     bookmark: <path d="M7 4h10a1 1 0 0 1 1 1v14.4a.6.6 0 0 1-.94.5L12 16.8l-5.06 3.6A.6.6 0 0 1 6 19.9V5a1 1 0 0 1 1-1Z"/>,
     copy: <><rect x="8" y="8" width="12" height="12" rx="2.4"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></>,
   };
@@ -2610,6 +2633,24 @@ function TinyWins({ items }) {
           </span>
         ))}
       </div>
+    </div>
+  );
+}
+
+function FocusCard({ item, onToggle, onClear }) {
+  if (!item) return null;
+  return (
+    <div className="focusCard">
+      <div className="focusHead">
+        <span className="focusLabel">✦ Today's one thing</span>
+        <button className="focusClear" onClick={onClear} data-tip="Remove as focus" aria-label="Remove as today's focus">×</button>
+      </div>
+      <button className="focusRow" onClick={onToggle}>
+        <span className="focusTick" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" fill="none" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </span>
+        <span className="focusText">{item.text}</span>
+      </button>
     </div>
   );
 }
@@ -3411,4 +3452,17 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .thoughtRow input::placeholder{color:var(--faint); font-style:italic; font-family:'Instrument Serif',serif}
 .thoughtSave{border:none; background:var(--ink); color:var(--bg); font-size:12.5px; font-weight:600; padding:8px 16px; border-radius:999px; flex:none}
 .pThoughtTag{font-size:10.5px; font-weight:650; color:var(--lilac); letter-spacing:.03em}
+.focusCard{background:linear-gradient(160deg, color-mix(in srgb, var(--pollen-soft) 60%, var(--surface)) 0%, var(--surface) 70%);
+  border:1px solid color-mix(in srgb, var(--pollen) 35%, var(--border)); border-radius:20px; padding:14px 18px; box-shadow:var(--sh-sm);
+  display:flex; flex-direction:column; gap:10px; animation:riseFade .5s ease both}
+.focusHead{display:flex; align-items:center; justify-content:space-between}
+.focusLabel{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--pollen)}
+.focusClear{border:none; background:transparent; color:var(--faint); font-size:16px; line-height:1; padding:2px 7px; border-radius:8px; transition:all .18s}
+.focusClear:hover{color:var(--rose-deep); background:var(--rose-soft)}
+.focusRow{display:flex; align-items:center; gap:12px; border:none; background:transparent; text-align:left; padding:0; width:100%}
+.focusTick{width:28px; height:28px; flex:none; border-radius:50%; border:1.5px solid var(--pollen); display:grid; place-items:center; transition:all .2s}
+.focusTick svg{width:14px; height:14px; stroke:var(--bg); stroke-dasharray:24; stroke-dashoffset:24}
+.focusRow:hover .focusTick{background:color-mix(in srgb, var(--pollen) 18%, transparent)}
+.focusText{font-family:'Instrument Serif',serif; font-style:italic; font-size:19px; line-height:1.4; color:var(--ink)}
+.rowIcon.focusOn{opacity:1; color:var(--pollen)}
 `;
