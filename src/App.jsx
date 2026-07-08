@@ -3302,8 +3302,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .heroPromise b{color:var(--moss-deep); font-weight:650; font-variant-numeric:tabular-nums}
 @media (max-width:900px){ .heroPromise{margin-left:auto; margin-right:auto; text-align:center} }
 
-.tinyWins{display:flex; flex-direction:column; gap:8px; animation:riseFade .5s ease both}
-.tinyWinsLabel{margin:0; font-size:11px; font-weight:650; letter-spacing:.08em; text-transform:uppercase; color:var(--faint)}
+.tinyWins{display:flex; flex-direction:column; gap:9px; margin-top:6px; animation:riseFade .5s ease both}
+.tinyWinsLabel{margin:0 0 2px; font-size:11px; font-weight:650; letter-spacing:.08em; text-transform:uppercase; color:var(--faint)}
 .tinyWinsRow{display:flex; flex-wrap:wrap; gap:8px}
 .tinyWinChip{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:500; color:var(--moss-deep);
   background:var(--moss-soft); border:1px solid color-mix(in srgb, var(--moss) 30%, transparent); padding:6px 13px; border-radius:999px}
