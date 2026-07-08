@@ -304,6 +304,15 @@ const EVENING_AFFIRMATIONS = [
   "Softness at the end of the day is well earned.",
   "Tomorrow will ask for you gently. Rest first.",
 ];
+
+/* when entries have been shrinking, the day may be asking for less —
+   these need only a word or an image, never a paragraph */
+const GENTLE_PROMPTS = [
+  "Just one word for today?",
+  "A single moment — what was it?",
+  "No need for sentences. What's here right now?",
+  "One small thing. What comes to mind?",
+];
 const dailyAffirmation = () => {
   const p = partOfDay();
   const pool = (p === "evening" || p === "night") ? EVENING_AFFIRMATIONS : AFFIRMATIONS;
@@ -316,11 +325,7 @@ const dailyAffirmation = () => {
    fabricates. Tagged, longer entries are preferred as more intentional. ── */
 const MONTHN = ["January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"];
-const recallPhrase = (stamp) => {
-  const days = Math.floor((Date.now() - stamp) / 86400000);
-  if (days >= 330) return "A year ago, you wrote:";
-  return `Back in ${MONTHN[new Date(stamp).getMonth()]}, you wrote:`;
-};
+
 const recallExcerpt = (text) => {
   const clean = text.trim().replace(/\s+/g, " ");
   if (clean.length <= 90) return clean;
@@ -328,17 +333,84 @@ const recallExcerpt = (text) => {
   const at = cut.lastIndexOf(" ");
   return (at > 40 ? cut.slice(0, at) : cut).trim() + "…";
 };
-const pickRecall = (journal) => {
-  const MIN_AGE = 30 * 86400000; // at least a month old to feel like memory
+/* one memory voice, shared by the Today hero and the Journal screen. */
+const memoryLead = (entry, tag) => {
+  const d = new Date(entry.stamp), now = new Date();
+  const days = Math.floor((Date.now() - entry.stamp) / 86400000);
+  let when;
+  if (days >= 330) when = "a year ago";
+  else if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) when = "earlier this month";
+  else when = `back in ${MONTHN[d.getMonth()]}`;
+  const When = when.charAt(0).toUpperCase() + when.slice(1);
+  if (tag) return `#${tag} has been on your mind — ${when} you wrote:`;
+  return `${When}, you wrote:`;
+};
+
+/* one selector, used by both surfaces. `prefer` only changes which kind of
+   connection it looks for first — the fallbacks and the voice are identical,
+   so the two screens can never contradict each other. */
+const pickMemory = (journal, { recentTags = [], prefer = "age" } = {}) => {
   const now = Date.now();
-  const old = journal.filter(
-    (j) => j.text && j.text.trim().length >= 24 && (now - j.stamp) >= MIN_AGE
-  );
-  if (!old.length) return null;
-  const tagged = old.filter((j) => (j.tags || []).length);
-  const pool = tagged.length ? tagged : old;
-  const ordered = [...pool].sort((a, b) => a.stamp - b.stamp); // oldest first
-  return ordered[dayOfYear() % ordered.length];
+  const past = journal.filter((j) => j.text && j.text.trim().length >= 24 && !isToday(j.stamp));
+  if (!past.length) return null;
+  const recent = new Set(recentTags.map((t) => t.toLowerCase()));
+  const today = new Date();
+
+  const byDate = () => past
+    .filter((j) => new Date(j.stamp).getDate() === today.getDate())
+    .sort((a, b) => b.stamp - a.stamp)[0] || null;
+  const byTheme = () => {
+    const hits = past.filter((j) => (j.tags || []).some((t) => recent.has(t.toLowerCase())));
+    return hits.sort((a, b) => b.stamp - a.stamp)[0] || null;
+  };
+  const byAge = () => {
+    const old = past.filter((j) => now - j.stamp >= 30 * 86400000);
+    const tagged = old.filter((j) => (j.tags || []).length);
+    const pool = tagged.length ? tagged : old;
+    if (!pool.length) return null;
+    return [...pool].sort((a, b) => a.stamp - b.stamp)[dayOfYear() % pool.length];
+  };
+
+  const order = prefer === "date" ? [byDate, byTheme, byAge] : [byTheme, byAge, byDate];
+  for (const fn of order) {
+    const hit = fn();
+    if (hit) {
+      const tag = (hit.tags || []).find((t) => recent.has(t.toLowerCase())) || null;
+      return { entry: hit, tag };
+    }
+  }
+  return null;
+};
+
+/* energy-aware nudge: match the hour's natural energy to a pending intention.
+   Returns one gentle line, or null when there's nothing worth saying. */
+const energyForPart = (pod) =>
+  pod === "morning" ? "high" : (pod === "evening" || pod === "night") ? "low" : "medium";
+
+const pickEnergyNudge = (todos) => {
+  const pod = partOfDay();
+  const openAll = todos.filter((t) => !t.done && (t.bucket || "today") === "today");
+
+  // late in the day with a lot still open — offer tomorrow, gently (takes priority)
+  if ((pod === "evening" || pod === "night") && openAll.length >= 4) {
+    return { text: `${openAll.length} intentions are still open — the unfinished ones will keep until tomorrow.`, id: null };
+  }
+
+  const want = energyForPart(pod);
+  const open = openAll.filter((t) => t.energy);
+  if (!open.length) return null;
+
+  const match = open.find((t) => t.energy === want);
+  if (match) {
+    if (want === "high")
+      return { text: `Your energy runs highest now — a good moment for “${match.text}.”`, id: match.id };
+    if (want === "low")
+      return { text: `The day is winding down. Something light like “${match.text}” is plenty.`, id: match.id };
+    return { text: `A steady stretch — “${match.text}” fits the hour.`, id: match.id };
+  }
+  if ((pod === "evening" || pod === "night") && open.every((t) => t.energy === "high"))
+    return { text: "Only the heavier intentions are left — evening is a fair time to let them wait.", id: null };
+  return null;
 };
 
 /* little lines that celebrate a small win, chosen at random */
@@ -603,7 +675,19 @@ useEffect(() => {
   const reminderTimers = useRef({});
   const importInputRef = useRef(null);
   const starters = useMemo(() => todaysStarters(), []);
-   const recall = useMemo(() => pickRecall(journal), [journal]);
+  const recentTags = useMemo(() => {
+  const CUTOFF = Date.now() - 21 * 86400000;
+  const bag = new Map(); // lowercased key -> original casing
+  const add = (tags) => (tags || []).forEach((t) => {
+    const k = t.toLowerCase(); if (!bag.has(k)) bag.set(k, t);
+  });
+  journal.forEach((j) => { if (j.stamp >= CUTOFF) add(j.tags); });
+  todos.forEach((t) => { if ((t.stamp || 0) >= CUTOFF) add(t.tags); });
+  return [...bag.values()];
+}, [journal, todos]);
+
+const recall = useMemo(() => pickMemory(journal, { recentTags, prefer: "age" }), [journal, recentTags]);
+   const energyNudge = useMemo(() => pickEnergyNudge(todos), [todos]);
 
   /* load / persist */
   useEffect(() => {
@@ -1013,7 +1097,7 @@ const toggleFocus = (id) => {
     const v = entryText.trim(); if (!v) return;
     let tags = entryTags;
     if (entryTagInput.trim()) entryTagInput.split(",").forEach((p) => { tags = addTagUnique(tags, p); });
-    setJournal((j) => [{ id: uid(), stamp: Date.now(), mood: entryMood, text: v, prompt: dailyPrompt(), tags }, ...j]);
+    setJournal((j) => [{ id: uid(), stamp: Date.now(), mood: entryMood, text: v, prompt: journalPrompt.text, tags }, ...j]);
     setEntryText(""); setEntryMood(null); setEntryTags([]); setEntryTagInput("");
     play("save"); flash(pick(JOURNAL_LINES));
   };
@@ -1253,26 +1337,7 @@ const saveThought = () => {
   }, [todos, journal, pocket]);
 
   /* "on this day" — a past entry written on this same day-of-month, most recent first */
-  const onThisDay = useMemo(() => {
-  const now = new Date();
-  const byDate = journal.filter((j) => {
-    const d = new Date(j.stamp);
-    return d.getDate() === now.getDate() && !isToday(j.stamp);
-  }).sort((a, b) => b.stamp - a.stamp);
-  if (byDate[0]) return { ...byDate[0], matchType: "date" };
-
-  // fallback: most recent past entry sharing today's recurring theme —
-  // the tag the person has returned to most across all entries
-  const tagCounts = {};
-  journal.forEach((j) => (j.tags || []).forEach((t) => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
-  const topTag = Object.entries(tagCounts).sort((a, b) => b[1] - a[1])[0];
-  if (topTag && topTag[1] >= 2) {
-    const byTheme = journal.filter((j) => !isToday(j.stamp) && (j.tags || []).includes(topTag[0]))
-      .sort((a, b) => b.stamp - a.stamp);
-    if (byTheme[0]) return { ...byTheme[0], matchType: "theme", theme: topTag[0] };
-  }
-  return null;
-}, [journal]);
+  const onThisDay = useMemo(() => pickMemory(journal, { recentTags, prefer: "date" }), [journal, recentTags]);
 
   const moodTrend = useMemo(() => (
     [...journal].filter((j) => j.mood).sort((a, b) => a.stamp - b.stamp).slice(-14)
@@ -1284,6 +1349,22 @@ const saveThought = () => {
     [...journal].sort((a, b) => a.stamp - b.stamp).slice(-14)
       .map((j) => ({ v: j.text.trim() ? j.text.trim().split(/\s+/).length : 0, stamp: j.stamp }))
   ), [journal]);
+
+  /* ▼ PASTE journalPrompt HERE — now lengthTrend genuinely exists above it ▼ */
+  const journalPrompt = useMemo(() => {
+    const base = dailyPrompt();
+    const pts = lengthTrend;
+    if (pts.length >= 4) {
+      const avg = (a) => a.reduce((s, v) => s + v, 0) / Math.max(1, a.length);
+      const recent = pts.slice(-3).map((p) => p.v);
+      const prior = pts.slice(-6, -3).map((p) => p.v);
+      const rAvg = avg(recent);
+      if (rAvg < 18 && (prior.length === 0 || rAvg < avg(prior) * 0.7)) {
+        return { text: GENTLE_PROMPTS[dayOfYear() % GENTLE_PROMPTS.length], gentle: true };
+      }
+    }
+    return { text: base, gentle: false };
+  }, [lengthTrend]);
 
   const allJournalTags = useMemo(() => {
     const set = new Set();
@@ -1610,13 +1691,18 @@ const tinyWins = useMemo(() => {
                 <p className="sub">{SUBLINE[pod]}</p>
                <p className="affirmation"><span className="affirmationMark">✦</span>{dailyAffirmation()}</p>
                  {recall && (
-                  <button className="recall" onClick={() => goView("journal")} data-tip="Open your journal">
-                    <span className="recallMark">❝</span>
-                    <span className="recallText">
-                      <b>{recallPhrase(recall.stamp)}</b> <em>{recallExcerpt(recall.text)}</em>
-                    </span>
-                  </button>
-                )}
+  <button className="recall" onClick={() => goView("journal")} data-tip="Open your journal">
+    <span className="recallMark"><LeafMark /></span>
+    <span className="recallText">
+      <b>{memoryLead(recall.entry, recall.tag)}</b> <em>{recallExcerpt(recall.entry.text)}</em>
+    </span>
+  </button>
+)}
+                 {energyNudge && (
+  <p className="heroPromise energyNudge">
+    <span className="energyNudgeMark"><LeafMark /></span>{energyNudge.text}
+  </p>
+)}
                 {weekStats.totalDone > 0 && (
                   <p className="heroPromise">You've kept <b>{weekStats.totalDone}</b> promise{weekStats.totalDone === 1 ? "" : "s"} to yourself this week.{pendingAll.length > 0 ? ` ${pendingAll.length === 1 ? "One gentle intention remains" : `${pendingAll.length} gentle intentions remain`}.` : " The slate is clear."}</p>
                 )}
@@ -1996,8 +2082,8 @@ const tinyWins = useMemo(() => {
         {view === "journal" && (
           <section className="narrow">
             <div className="jHero">
-              <p className="eyebrow">Today's prompt</p>
-              <h1 className="prompt"><em>{dailyPrompt()}</em></h1>
+              <p className="eyebrow">{journalPrompt.gentle ? "A gentler prompt today" : "Today's prompt"}</p>
+              <h1 className="prompt"><em>{journalPrompt.text}</em></h1>
               <div className="jHeroActions">
                 {journal.length > 0 && <button className="exportLink" onClick={exportJournal}>Export journal ↓</button>}
                 <button className="exportLink" onClick={() => { setCompanionOn((v) => !v); play("tap"); }} data-tip="Some evenings you write to be alone with a thought. Turn reflections off any time.">
@@ -2050,12 +2136,12 @@ const tinyWins = useMemo(() => {
 
             {onThisDay && (
   <div className="onThisDay">
-    <p className="onThisDayLabel">
-      {onThisDay.matchType === "date"
-        ? `On this day · ${fmtDay(onThisDay.stamp)}, ${new Date(onThisDay.stamp).getFullYear()}`
-        : `A past “${onThisDay.theme}” entry · ${fmtDay(onThisDay.stamp)}`}
+    <p className="onThisDayLead">
+      <span className="onThisDayMark"><LeafMark /></span>
+      {memoryLead(onThisDay.entry, onThisDay.tag)}
     </p>
-    <p className="onThisDayText">{onThisDay.mood ? onThisDay.mood + " " : ""}{onThisDay.text.slice(0, 180)}{onThisDay.text.length > 180 ? "…" : ""}</p>
+    <p className="onThisDayText">{onThisDay.entry.mood ? onThisDay.entry.mood + " " : ""}{onThisDay.entry.text.slice(0, 180)}{onThisDay.entry.text.length > 180 ? "…" : ""}</p>
+    <p className="onThisDayDate">{fmtDay(onThisDay.entry.stamp)}, {new Date(onThisDay.entry.stamp).getFullYear()}</p>
   </div>
 )}
 
@@ -3257,9 +3343,13 @@ h3{font-family:'Instrument Serif',serif; font-size:18px}
 .rangeToggle{display:inline-flex; gap:4px; margin-top:16px; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:4px}
 .rangePill{border:none; background:transparent; color:var(--muted); font-size:12.5px; font-weight:600; padding:6px 16px; border-radius:999px; transition:all .2s}
 .rangePill.rangeOn{background:var(--ink); color:var(--bg)}
-.onThisDay{background:var(--lilac-soft); border:1px solid color-mix(in srgb, var(--lilac) 35%, var(--border)); border-radius:18px; padding:14px 18px; display:flex; flex-direction:column; gap:5px}
-.onThisDayLabel{margin:0; font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--lilac)}
+/* "on this day" — same voice as the hero recall: leaf, serif, moss */
+.onThisDay{background:color-mix(in srgb, var(--moss-soft) 55%, var(--surface)); border:1px solid color-mix(in srgb, var(--moss) 28%, var(--border)); border-radius:18px; padding:14px 18px; display:flex; flex-direction:column; gap:7px}
+.onThisDayLead{margin:0; display:flex; align-items:flex-start; gap:8px; font-family:'Instrument Serif',serif; font-size:14px; line-height:1.5; color:var(--moss-deep)}
+.onThisDayMark{flex:none; color:var(--moss); width:15px; height:15px; margin-top:1px}
+.onThisDayMark .leaf{width:15px; height:15px}
 .onThisDayText{margin:0; font-family:'Instrument Serif',serif; font-style:italic; font-size:15px; line-height:1.6; color:var(--ink)}
+.onThisDayDate{margin:0; font-size:10.5px; font-weight:600; letter-spacing:.04em; color:var(--faint); font-variant-numeric:tabular-nums}
 .jCompose{display:flex; flex-direction:column; gap:12px; background:var(--surface); border:1px solid var(--border); border-radius:22px; padding:16px; box-shadow:var(--sh-sm)}
 .moodRow{display:flex; gap:6px; justify-content:center; flex-wrap:wrap}
 .mood{display:flex; flex-direction:column; align-items:center; gap:2px; border:1px solid var(--border); background:transparent;
@@ -3408,7 +3498,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
   border:none; background:transparent; padding:0; cursor:pointer; max-width:46ch;
   color:var(--muted); animation:riseFade .6s ease both; transition:color .2s}
 .recall:hover{color:var(--ink)}
-.recallMark{font-family:'Instrument Serif',serif; font-size:20px; line-height:1; color:var(--season); flex:none; transform:translateY(1px)}
+.recallMark{flex:none; color:var(--moss); width:16px; height:16px; margin-top:1px}
+.recallMark .leaf{width:16px; height:16px}
 .recallText{font-size:14.5px; line-height:1.6}
 .recallText b{font-weight:600; color:var(--moss-deep)}
 .recallText em{font-family:'Instrument Serif',serif; font-style:italic; color:var(--ink)}
@@ -3495,6 +3586,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .heroPromise b{color:var(--moss-deep); font-weight:650; font-variant-numeric:tabular-nums}
 @media (max-width:900px){ .heroPromise{margin-left:auto; margin-right:auto; text-align:center} }
 
+/* energy / tomorrow nudge — the same presence, noticing rather than remembering */
+.energyNudge{display:flex; align-items:flex-start; gap:8px; max-width:46ch;
+  font-family:'Instrument Serif',serif; font-style:italic; color:var(--moss-deep)}
+.energyNudgeMark{flex:none; color:var(--moss); width:15px; height:15px; margin-top:2px}
+.energyNudgeMark .leaf{width:15px; height:15px}
+@media (max-width:900px){ .energyNudge{justify-content:center; text-align:center; margin-left:auto; margin-right:auto} }
+
 .tinyWins{display:flex; flex-direction:column; gap:9px; margin-top:14px; animation:riseFade .5s ease both}
 .tinyWinsLabel{margin:0 0 2px; font-size:11px; font-weight:650; letter-spacing:.08em; text-transform:uppercase; color:var(--faint)}
 .tinyWinsRow{display:flex; flex-wrap:wrap; gap:8px}
@@ -3532,6 +3630,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .heroText > *:nth-child(5){animation-delay:.30s}
 .heroText > *:nth-child(6){animation-delay:.37s}
 .heroText > *:nth-child(7){animation-delay:.44s}
+.heroText > *:nth-child(8){animation-delay:.51s}
+.heroText > *:nth-child(9){animation-delay:.58s}
 
 .side > *{animation:riseFade .5s cubic-bezier(.22,1,.36,1) both}
 .side > *:nth-child(1){animation-delay:.06s}
