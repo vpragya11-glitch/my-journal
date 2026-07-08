@@ -1630,28 +1630,24 @@ export default function Sukoon() {
                         )}
 
                         {subOpenId === t.id && (
-                          <div className="subPanel">
-                            {subs.length > 0 && (
-                              <ul className="subList">
-                                {subs.map((s) => (
-                                  <li key={s.id} className={"subRow" + (s.done ? " subDone" : "")}>
-                                    <button className="subTick" onClick={() => toggleSubtask(t.id, s.id)} aria-label={s.done ? "Mark step undone" : "Mark step done"}>
-                                      <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" fill="none" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                    </button>
-                                    <span className="subText">{s.text}</span>
-                                    <button className="x" onClick={() => removeSubtask(t.id, s.id)} aria-label="Remove step">×</button>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                            <div className="subAddRow">
-                              <input value={subDraft} onChange={(e) => setSubDraft(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === "Enter") addSubtask(t.id); }}
-                                placeholder="Add a step…" aria-label="Add a step" />
-                              <button className="subAddBtn" onClick={() => addSubtask(t.id)}>Add</button>
-                            </div>
-                          </div>
-                        )}
+  <div className="subPanel">
+    <div className="subPanelHead">
+      <span className="subPanelLabel">Steps</span>
+      <button className="subPanelClose" onClick={() => setSubOpenId(null)} aria-label="Close steps">×</button>
+    </div>
+    {subs.length > 0 && (
+      <ul className="subList">
+        ...
+      </ul>
+    )}
+   <div className="subAddRow">
+      <input value={subDraft} onChange={(e) => setSubDraft(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") addSubtask(t.id); if (e.key === "Escape") setSubOpenId(null); }}
+        placeholder="Add a step…" aria-label="Add a step" />
+      <button className="subAddBtn" onClick={() => addSubtask(t.id)}>Add</button>
+    </div>
+  </div>
+)}
                         </li>
                         );
                       })}
@@ -2863,6 +2859,10 @@ h3{font-family:'Instrument Serif',serif; font-size:18px}
 
 /* sub-checklist */
 .subPanel{background:var(--surface2); border:1px dashed var(--border2); border-radius:14px; padding:10px 12px; display:flex; flex-direction:column; gap:8px; margin-left:32px}
+.subPanelHead{display:flex; align-items:center; justify-content:space-between; margin-bottom:2px}
+.subPanelLabel{font-size:11px; font-weight:650; letter-spacing:.06em; text-transform:uppercase; color:var(--faint)}
+.subPanelClose{border:none; background:transparent; color:var(--faint); font-size:16px; line-height:1; padding:2px 6px; border-radius:8px; transition:all .18s}
+.subPanelClose:hover{color:var(--rose-deep); background:var(--rose-soft)}
 .subList{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px}
 .subRow{display:flex; align-items:center; gap:8px}
 .subTick{width:19px; height:19px; flex:none; border-radius:50%; border:1.5px solid var(--border2); background:transparent; display:grid; place-items:center; transition:all .2s}
