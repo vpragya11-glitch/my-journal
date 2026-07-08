@@ -471,6 +471,7 @@ export default function Sukoon() {
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null); // { msg, undo }
   const [celebrate, setCelebrate] = useState(false);
+  const [panicMode, setPanicMode] = useState(false);
   const [monthOffset, setMonthOffset] = useState(0);
   const [reviewRange, setReviewRange] = useState("week");
   const [reviewMonthOffset, setReviewMonthOffset] = useState(0);
@@ -510,6 +511,17 @@ export default function Sukoon() {
 
   const soundRef = useRef(true); soundRef.current = soundOn;
   const play = useCallback((n) => { if (soundRef.current && SOUNDS[n]) SOUNDS[n](); }, []);
+   const enterPanic = () => {
+  if (ambient) { getAmbient().stop(); setAmbient(null); }
+  setPanicMode(true); play("tap");
+};
+const exitPanic = () => { setPanicMode(false); play("nav"); };
+useEffect(() => {
+  if (!panicMode) return;
+  const onKey = (e) => { if (e.key === "Escape") exitPanic(); };
+  window.addEventListener("keydown", onKey);
+  return () => window.removeEventListener("keydown", onKey);
+}, [panicMode]); // eslint-disable-line react-hooks/exhaustive-deps
    const toggleAmbient = (scene) => {
     const eng = getAmbient();
     if (ambient === scene) { eng.stop(); setAmbient(null); play("tap"); return; }
@@ -1010,7 +1022,12 @@ export default function Sukoon() {
     setGratitude((g) => g.filter((x) => x.id !== id));
     play("delete");
   };
-
+const [thoughtDraft, setThoughtDraft] = useState("");
+const saveThought = () => {
+  const v = thoughtDraft.trim(); if (!v) return;
+  setPocket((p) => [{ id: uid(), title: v, link: "", stamp: Date.now(), type: "thought" }, ...p]);
+  setThoughtDraft(""); play("tap"); flash("Set down — pick it up later if you need to");
+};
   const savePocket = () => {
     const v = pTitle.trim(); if (!v) return;
     setPocket((p) => [{ id: uid(), title: v, link: pLink.trim(), stamp: Date.now() }, ...p]);
@@ -1303,6 +1320,18 @@ export default function Sukoon() {
     ...journal.filter((j) => isToday(j.stamp)).map((j) => ({ id: "j" + j.id, stamp: j.stamp, kind: "journal", text: "Wrote in your journal" })),
     ...pocket.filter((p) => isToday(p.stamp)).map((p) => ({ id: "p" + p.id, stamp: p.stamp, kind: "pocket", text: "Kept: " + p.title })),
   ].sort((a, b) => b.stamp - a.stamp).slice(0, 6), [todos, journal, pocket]);
+
+/* tiny wins — completed intentions + gratitude, today only, for the "look what's already true" strip */
+const tinyWins = useMemo(() => {
+  const tk = dayKey(Date.now());
+  const doneToday = todos.filter((t) => (isRecurringItem(t)
+    ? (t.doneDays || []).includes(tk)
+    : (t.done && t.doneAt && isToday(t.doneAt))));
+  return [
+    ...doneToday.map((t) => ({ id: "w" + t.id, text: t.text, icon: "✓" })),
+    ...todaysGratitude.map((g) => ({ id: "g" + g.id, text: g.text, icon: "🌾" })),
+  ];
+}, [todos, todaysGratitude]);
 /* the garden — what today's small acts have grown, plus the all-time count */
   const garden = useMemo(() => {
     const tk = dayKey(Date.now());
@@ -1383,6 +1412,9 @@ export default function Sukoon() {
           ))}
         </nav>
         <div className="topBtns">
+           <button className="round panicBtn" data-tip="Take a quiet moment" onClick={enterPanic}>
+  <svg viewBox="0 0 24 24"><path d="M12 20c-4-3-7-6.2-7-10a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 3.8-3 7-7 10-1.4 1-2.6 1-4 0Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+</button>
           <button className={"round" + (soundOn ? " active" : "")} data-tip={soundOn ? "Sounds on" : "Sounds off"}
             onClick={() => { setSoundOn((s) => !s); if (!soundOn) SOUNDS.tap(); }} aria-pressed={soundOn}>
             <svg viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9H5z" fill="currentColor" opacity=".9"/><path d="M17.5 9.5a4 4 0 0 1 0 5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" opacity={soundOn ? 1 : 0.25}/></svg>
@@ -1431,6 +1463,8 @@ export default function Sukoon() {
               </div>
               <BreathCard play={play} />
             </section>
+
+            <TinyWins items={tinyWins} />
 
             <section className="grid">
               {/* intentions */}
@@ -1636,10 +1670,18 @@ export default function Sukoon() {
       <button className="subPanelClose" onClick={() => setSubOpenId(null)} aria-label="Close steps">×</button>
     </div>
     {subs.length > 0 && (
-      <ul className="subList">
-        ...
-      </ul>
-    )}
+  <ul className="subList">
+    {subs.map((s) => (
+      <li key={s.id} className={"subRow" + (s.done ? " subDone" : "")}>
+        <button className="subTick" onClick={() => toggleSubtask(t.id, s.id)} aria-label={s.done ? "Mark step not done" : "Mark step done"}>
+          <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" fill="none" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </button>
+        <span className="subText">{s.text}</span>
+        <button className="x" onClick={() => removeSubtask(t.id, s.id)} aria-label="Remove step">×</button>
+      </li>
+    ))}
+  </ul>
+)}
    <div className="subAddRow">
       <input value={subDraft} onChange={(e) => setSubDraft(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") addSubtask(t.id); if (e.key === "Escape") setSubOpenId(null); }}
@@ -1699,6 +1741,16 @@ export default function Sukoon() {
                   totalEver={garden.totalEver} streak={streak} pod={pod} />
 
                 <MonthCard offset={monthOffset} setOffset={setMonthOffset} meta={dayMeta} play={play} />
+
+                 <div className="thoughtCard">
+  <p className="thoughtLabel">Got something rattling around?</p>
+  <div className="thoughtRow">
+    <input value={thoughtDraft} onChange={(e) => setThoughtDraft(e.target.value)}
+      onKeyDown={(e) => { keySound(e); if (e.key === "Enter") saveThought(); }}
+      placeholder="Just set it down, no need to sort it…" aria-label="Park a stray thought" />
+    {thoughtDraft.trim() && <button className="thoughtSave" onClick={saveThought}>Park it</button>}
+  </div>
+</div>
 
                 <div className="trailCard">
                   <h3>Today's moments</h3>
@@ -2072,7 +2124,8 @@ export default function Sukoon() {
                   <div key={p.id} className={"pCard v" + (i % 4)}>
                     <button className="x pX" onClick={() => removePocket(p.id)} aria-label="Remove">×</button>
                     <p className="pTitle">{p.title}</p>
-                    {p.link && (
+                     {p.type === "thought" && <span className="pThoughtTag">✎ a stray thought</span>}
+                    {p.link && p.type !== "thought" && (
                       <a className="pLink" href={p.link.startsWith("http") ? p.link : "https://" + p.link} target="_blank" rel="noreferrer">
                         {p.link.replace(/^https?:\/\//, "").slice(0, 32)}{p.link.length > 40 ? "…" : ""} ↗
                       </a>
@@ -2107,6 +2160,16 @@ export default function Sukoon() {
           <p className="celebrateText">The day is complete.</p>
         </div>
       )}
+       {panicMode && (
+  <div className="panicOverlay" role="dialog" aria-modal="true" aria-label="A quiet moment">
+    <div className="panicBg" onClick={exitPanic} />
+    <div className="panicContent">
+      <p className="panicLine">Nothing else needs you right now. Just breathe.</p>
+      <BreathCard play={play} />
+      <button className="panicExit" onClick={exitPanic}>I'm ready</button>
+    </div>
+  </div>
+)}
     </div>
   );
 }
@@ -2535,6 +2598,22 @@ function Arc({ pct }) {
   );
 }
 
+function TinyWins({ items }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="tinyWins">
+      <p className="tinyWinsLabel">Already true today</p>
+      <div className="tinyWinsRow">
+        {items.map((it) => (
+          <span key={it.id} className="tinyWinChip">
+            <i>{it.icon}</i>{it.text.slice(0, 42)}{it.text.length > 42 ? "…" : ""}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Empty({ msg }) {
   return (
     <div className="empty">
@@ -2698,7 +2777,13 @@ h1 em{color:var(--moss)}
 .ringFg{fill:none; stroke:var(--moss); stroke-width:2.5; stroke-linecap:round;
   animation-name:ringWipe; animation-timing-function:linear; animation-fill-mode:forwards}
 @keyframes ringWipe{ from{stroke-dashoffset:var(--circ)} to{stroke-dashoffset:0} }
-
+.panicOverlay{position:fixed; inset:0; z-index:90; display:grid; place-items:center}
+.panicBg{position:absolute; inset:0; background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(14px) saturate(1.05); animation:overlayIn .5s ease both}
+.panicContent{position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:18px; animation:overlayRise .5s cubic-bezier(.22,1,.36,1) both; text-align:center; padding:0 20px}
+.panicLine{margin:0; font-family:'Instrument Serif',serif; font-style:italic; font-size:clamp(18px,2.6vw,24px); color:var(--ink); max-width:32ch}
+.panicExit{border:1px solid var(--border); background:var(--surface); color:var(--muted); font-size:13.5px; font-weight:600; padding:10px 22px; border-radius:999px; transition:all .2s}
+.panicExit:hover{color:var(--ink); border-color:var(--border2)}
+.panicBtn:hover{color:var(--lilac)}
 /* full-focus breathing overlay */
 .breathOverlay{position:fixed; inset:0; z-index:50; display:grid; place-items:center}
 .breathOverlayBg{position:absolute; inset:0; background:color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter:blur(10px) saturate(1.05); animation:overlayIn .4s ease both}
@@ -3176,6 +3261,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .heroPromise b{color:var(--moss-deep); font-weight:650; font-variant-numeric:tabular-nums}
 @media (max-width:900px){ .heroPromise{margin-left:auto; margin-right:auto; text-align:center} }
 
+.tinyWins{display:flex; flex-direction:column; gap:8px; animation:riseFade .5s ease both}
+.tinyWinsLabel{margin:0; font-size:11px; font-weight:650; letter-spacing:.08em; text-transform:uppercase; color:var(--faint)}
+.tinyWinsRow{display:flex; flex-wrap:wrap; gap:8px}
+.tinyWinChip{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:500; color:var(--moss-deep);
+  background:var(--moss-soft); border:1px solid color-mix(in srgb, var(--moss) 30%, transparent); padding:6px 13px; border-radius:999px}
+.tinyWinChip i{font-style:normal; font-size:11px}
+
 /* garden butterflies */
 .gflutter{transform-box:fill-box; transform-origin:center; animation:gflutterMove 6s ease-in-out infinite}
 @keyframes gflutterMove{0%,100%{transform:translate(0,0) rotate(-4deg)}50%{transform:translate(7px,-9px) rotate(4deg)}}
@@ -3214,6 +3306,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .side > *:nth-child(4){animation-delay:.27s}
 .side > *:nth-child(5){animation-delay:.34s}
 .side > *:nth-child(6){animation-delay:.41s}
+.side > *:nth-child(7){animation-delay:.48s}
 .gcloud{transform-box:view-box; animation:gdrift 26s ease-in-out infinite}
 @keyframes gdrift{0%,100%{transform:translateX(0)}50%{transform:translateX(14px)}}
 /* journal companion — a quiet presence under an entry */
@@ -3309,4 +3402,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .row.editing .tag,
 .row.editing .rowIcon,
 .row.editing .rowActions{display:none}
+
+.thoughtCard{background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:16px 18px; box-shadow:var(--sh-sm); display:flex; flex-direction:column; gap:10px}
+.thoughtLabel{margin:0; font-family:'Instrument Serif',serif; font-style:italic; font-size:14px; color:var(--muted)}
+.thoughtRow{display:flex; gap:8px; align-items:center}
+.thoughtRow input{flex:1; border:1px solid var(--border); background:var(--surface2); color:var(--ink); font-size:13.5px; padding:9px 13px; border-radius:999px; outline:none}
+.thoughtRow input:focus{border-color:var(--lilac)}
+.thoughtRow input::placeholder{color:var(--faint); font-style:italic; font-family:'Instrument Serif',serif}
+.thoughtSave{border:none; background:var(--ink); color:var(--bg); font-size:12.5px; font-weight:600; padding:8px 16px; border-radius:999px; flex:none}
+.pThoughtTag{font-size:10.5px; font-weight:650; color:var(--lilac); letter-spacing:.03em}
 `;
