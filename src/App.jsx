@@ -429,6 +429,9 @@ export default function Sukoon() {
   const [soundOn, setSoundOn] = useState(true);
   const [companionOn, setCompanionOn] = useState(true);
   const [reflectingId, setReflectingId] = useState(null);
+  const [memoryOn, setMemoryOn] = useState(false);          // opt-in, off by default
+  const [companionMemory, setCompanionMemory] = useState(""); // the distilled digest
+  const [memoryRevealed, setMemoryRevealed] = useState(false);
    const [ambient, setAmbient] = useState(null); // active scene key, or null
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null); // { msg, undo }
@@ -500,6 +503,8 @@ export default function Sukoon() {
           setGratitude(d.gratitude || []);
           if (typeof d.soundOn === "boolean") setSoundOn(d.soundOn);
           if (typeof d.companionOn === "boolean") setCompanionOn(d.companionOn);
+          if (typeof d.memoryOn === "boolean") setMemoryOn(d.memoryOn);
+          if (typeof d.companionMemory === "string") setCompanionMemory(d.companionMemory);
           if (d.theme) setTheme(d.theme);
           found = true;
         }
@@ -536,11 +541,11 @@ export default function Sukoon() {
   useEffect(() => {
     if (!loaded) return;
     const t = setTimeout(async () => {
-     try { await store.set(STORAGE_KEY, JSON.stringify({ todos, journal, pocket, gratitude, soundOn, companionOn, theme })); }
+     try { await store.set(STORAGE_KEY, JSON.stringify({ todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, theme })); }
       catch (e) { console.error("save failed", e); }
     }, 400);
     return () => clearTimeout(t);
-  }, [todos, journal, pocket, gratitude, soundOn, companionOn, theme, loaded]);
+  }, [todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, theme, loaded]);
 
   /* schedule gentle reminder notifications for intentions with a time set,
      while this tab stays open — browsers don't allow background delivery otherwise */
@@ -866,14 +871,18 @@ export default function Sukoon() {
     setReflectingId(j.id);
     play("tap");
     try {
-      const { data, error } = await supabase.functions.invoke("journal-companion", {
-        body: { text: j.text, mood: j.mood ? MOOD_NAME[j.mood] : null },
-      });
+      const payload = { text: j.text, mood: j.mood ? MOOD_NAME[j.mood] : null };
+      if (memoryOn) payload.memory = companionMemory || ""; // presence of this key = memory mode
+      const { data, error } = await supabase.functions.invoke("clever-function", { body: payload });
       if (error) throw error;
       const line = data && data.line;
       if (line) {
         setJournal((arr) => arr.map((x) =>
           x.id === j.id ? { ...x, companion: line, companionDistress: !!data.distress } : x));
+        // only update memory on a non-distress reflection that returned a digest
+        if (memoryOn && !data.distress && typeof data.memory === "string") {
+          setCompanionMemory(data.memory);
+        }
       } else {
         flash("No reflection just now — your words stand on their own");
       }
@@ -1642,8 +1651,32 @@ export default function Sukoon() {
                 <button className="exportLink" onClick={() => { setCompanionOn((v) => !v); play("tap"); }} data-tip="Some evenings you write to be alone with a thought. Turn reflections off any time.">
                   {companionOn ? "reflections on" : "reflections off"}
                 </button>
+                {companionOn && (
+                  <button className={"exportLink" + (memoryOn ? " memoryPillOn" : "")}
+                    onClick={() => { setMemoryOn((v) => !v); play("tap"); }}
+                    data-tip="When on, Sukoon holds a soft memory of your days, so reflections can notice gently across time. Off by default.">
+                    {memoryOn ? "memory on" : "memory off"}
+                  </button>
+                )}
               </div>
             </div>
+
+            {companionOn && memoryOn && companionMemory && (
+              <div className="memoryCard">
+                <button className="memoryReveal" onClick={() => { setMemoryRevealed((v) => !v); play("nav"); }}>
+                  <span>🌿 Sukoon holds a soft memory of your days</span>
+                  <span className={"memoryChevron" + (memoryRevealed ? " memoryChevronOpen" : "")}>›</span>
+                </button>
+                {memoryRevealed && (
+                  <div className="memoryBody">
+                    <p className="memoryText">{companionMemory}</p>
+                    <button className="memoryForget" onClick={() => { setCompanionMemory(""); setMemoryRevealed(false); play("delete"); flash("Gently forgotten"); }}>
+                      forget everything
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
              <div className="gratitudeCard">
               <p className="gratitudeLabel">Today I'm grateful for</p>
@@ -2982,4 +3015,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .companionLine p{margin:0; font-family:'Instrument Serif',serif; font-style:italic; font-size:15px; line-height:1.6; color:var(--moss-deep)}
 .companionCare{background:var(--lilac-soft); border:1px solid color-mix(in srgb, var(--lilac) 40%, var(--border)); flex-direction:column; gap:6px}
 .companionCare p{color:var(--ink); font-style:normal; font-family:'Instrument Sans'; font-size:14px}
+/* companion memory — consent pill + the reveal */
+.memoryPillOn{background:var(--lilac-soft); border-color:var(--lilac); color:var(--lilac)}
+.memoryCard{border:1px solid color-mix(in srgb, var(--lilac) 30%, var(--border)); background:color-mix(in srgb, var(--lilac-soft) 55%, var(--surface)); border-radius:16px; overflow:hidden; animation:riseFade .5s ease both}
+.memoryReveal{width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; border:none; background:transparent; padding:13px 16px; font-family:'Instrument Serif',serif; font-style:italic; font-size:14.5px; color:var(--lilac); text-align:left}
+.memoryChevron{transition:transform .2s; font-style:normal}
+.memoryChevronOpen{transform:rotate(90deg)}
+.memoryBody{padding:0 16px 14px; display:flex; flex-direction:column; gap:10px}
+.memoryText{margin:0; font-size:13.5px; line-height:1.7; color:var(--ink); white-space:pre-wrap}
+.memoryForget{align-self:flex-start; border:1px solid var(--border); background:var(--surface); color:var(--muted); font-size:11.5px; font-weight:600; padding:6px 13px; border-radius:999px; transition:all .2s}
+.memoryForget:hover{color:var(--rose-deep); border-color:var(--rose)}
 `;
