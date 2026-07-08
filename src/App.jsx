@@ -2732,7 +2732,7 @@ h3{font-family:'Instrument Serif',serif; font-size:18px}
 .exportLink{border:1px solid var(--border); background:var(--surface); color:var(--muted);
   font-size:11.5px; font-weight:600; padding:6px 12px; border-radius:999px; transition:all .2s}
 .exportLink:hover{color:var(--ink); border-color:var(--border2)}
-.jHeroActions{position:absolute; right:0; top:6px; display:flex; gap:8px; align-items:center}
+.jHeroActions{display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:14px}
 .rangeToggle{display:inline-flex; gap:4px; margin-top:16px; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:4px}
 .rangePill{border:none; background:transparent; color:var(--muted); font-size:12.5px; font-weight:600; padding:6px 16px; border-radius:999px; transition:all .2s}
 .rangePill.rangeOn{background:var(--ink); color:var(--bg)}
