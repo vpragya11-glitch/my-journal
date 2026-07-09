@@ -396,6 +396,7 @@ const pickEnergyNudge = (todos) => {
     return { text: `${openAll.length} intentions are still open — the unfinished ones will keep until tomorrow.`, id: null };
   }
 
+   
   const want = energyForPart(pod);
   const open = openAll.filter((t) => t.energy);
   if (!open.length) return null;
@@ -411,6 +412,78 @@ const pickEnergyNudge = (todos) => {
   if ((pod === "evening" || pod === "night") && open.every((t) => t.energy === "high"))
     return { text: "Only the heavier intentions are left — evening is a fair time to let them wait.", id: null };
   return null;
+};
+
+/* the shape of a life, in facts — a compact, factual snapshot across every
+   surface, for the companion to hold. Never interprets, never invents;
+   any line with too little evidence is simply left out. */
+const DAYN = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
+
+const buildLifeDigest = ({ todos, journal, gratitude, pocket }) => {
+  const lines = [];
+  const now = Date.now();
+  const D = 86400000;
+
+  /* — span & rhythm — */
+  const oldest = Math.min(...journal.map((j) => j.stamp), ...todos.map((t) => t.stamp || now));
+  const weeks = Math.floor((now - oldest) / (7 * D));
+  if (weeks >= 2) lines.push(`Sukoon has been kept for about ${weeks} weeks.`);
+
+  /* — journaling habits — */
+  if (journal.length >= 3) {
+    lines.push(`Journal entries: ${journal.length}.`);
+    const eve = journal.filter((j) => new Date(j.stamp).getHours() >= 17).length;
+    if (eve / journal.length >= 0.6) lines.push("Writes mostly in the evening.");
+    else if (eve / journal.length <= 0.25) lines.push("Writes mostly earlier in the day.");
+  }
+
+  /* — enduring themes: tags returned to across months, not just this week — */
+  const tagCounts = {};
+  journal.forEach((j) => (j.tags || []).forEach((t) => {
+    const k = t.toLowerCase(); tagCounts[k] = (tagCounts[k] || 0) + 1;
+  }));
+  const enduring = Object.entries(tagCounts).filter(([, n]) => n >= 3)
+    .sort((a, b) => b[1] - a[1]).slice(0, 3);
+  if (enduring.length) lines.push(`Themes returned to often: ${enduring.map(([t]) => `"${t}"`).join(", ")}.`);
+
+  /* — mood, over the long run — */
+  const withMood = journal.filter((j) => j.mood);
+  if (withMood.length >= 6) {
+    const avg = withMood.reduce((s, j) => s + (MOOD_VALUE[j.mood] || 3), 0) / withMood.length;
+    lines.push(`Mood usually sits ${avg >= 3.8 ? "on the lighter side" : avg <= 2.4 ? "on the heavier side" : "somewhere in the middle"}.`);
+    const recent = withMood.filter((j) => now - j.stamp <= 21 * D);
+    if (recent.length >= 3) {
+      const rAvg = recent.reduce((s, j) => s + (MOOD_VALUE[j.mood] || 3), 0) / recent.length;
+      if (rAvg - avg >= 0.5) lines.push("Lately, lighter than usual.");
+      else if (avg - rAvg >= 0.5) lines.push("Lately, heavier than usual.");
+    }
+  }
+
+  /* — what gets kept: rituals that actually hold — */
+  const kept = todos.filter((t) => isRecurringItem(t) && (t.doneDays || []).length >= 5)
+    .sort((a, b) => (b.doneDays || []).length - (a.doneDays || []).length).slice(0, 3);
+  kept.forEach((t) => lines.push(`Has kept "${t.text}" on ${t.doneDays.length} days.`));
+
+  /* — when things get done — */
+  const done = todos.filter((t) => t.doneAt);
+  if (done.length >= 10) {
+    const morning = done.filter((t) => new Date(t.doneAt).getHours() < 12).length;
+    if (morning / done.length >= 0.5) lines.push("Completes most intentions before noon.");
+    const byDow = Array.from({ length: 7 }, () => 0);
+    done.forEach((t) => byDow[new Date(t.doneAt).getDay()]++);
+    const max = Math.max(...byDow);
+    if (max >= done.length * 0.22) lines.push(`Most productive on ${DAYN[byDow.indexOf(max)]}.`);
+  }
+
+  /* — what's been set aside — */
+  const someday = todos.filter((t) => t.bucket === "someday").length;
+  if (someday >= 3) lines.push(`${someday} intentions parked for someday.`);
+
+  /* — what's noticed with thanks — */
+  if (gratitude.length >= 5) lines.push(`Has noted ${gratitude.length} small gratitudes.`);
+  if (pocket.length >= 5) lines.push(`Keeps ${pocket.length} things in pocket.`);
+
+  return lines.join("\n");
 };
 
 /* little lines that celebrate a small win, chosen at random */
@@ -1108,7 +1181,10 @@ const toggleFocus = (id) => {
     play("tap");
     try {
       const payload = { text: j.text, mood: j.mood ? MOOD_NAME[j.mood] : null };
-      if (memoryOn) payload.memory = companionMemory || ""; // presence of this key = memory mode
+      if (memoryOn) {
+        payload.memory = companionMemory || "";
+        if (lifeDigest) payload.life = lifeDigest;
+      }
       const { data, error } = await supabase.functions.invoke("journal-companion", { body: payload });
       if (error) throw error;
       const line = data && data.line;
@@ -1350,7 +1426,14 @@ const saveThought = () => {
       .map((j) => ({ v: j.text.trim() ? j.text.trim().split(/\s+/).length : 0, stamp: j.stamp }))
   ), [journal]);
 
-  /* ▼ PASTE journalPrompt HERE — now lengthTrend genuinely exists above it ▼ */
+   /* only meaningful once there's some history; below that, silence */
+const lifeDigest = useMemo(() => {
+  if (journal.length < 3 && todos.filter((t) => t.doneAt).length < 10) return "";
+  return buildLifeDigest({ todos, journal, gratitude, pocket });
+}, [todos, journal, gratitude, pocket]);
+
+  /* when entries have been shrinking, offer a gentler prompt — a real
+     downward trend only, never on a single short day */
   const journalPrompt = useMemo(() => {
     const base = dailyPrompt();
     const pts = lengthTrend;
@@ -1520,6 +1603,7 @@ const patterns = useMemo(() => {
         try {
           const payload = { weekDigest: lastWeekDigest.text };
           if (memoryOn && companionMemory) payload.memory = companionMemory;
+           if (memoryOn && lifeDigest) payload.life = lifeDigest;
           const { data, error } = await supabase.functions.invoke("journal-companion", { body: payload });
           if (!error && data && data.letter) text = data.letter;
         } catch (e) { /* fall through to template */ }
@@ -1530,7 +1614,7 @@ const patterns = useMemo(() => {
       setLetters((prev) => [{ weekKey: pk, text, label: lastWeekDigest.label, createdAt: Date.now() }, ...prev]);
       setLetterComposing(false);
     })();
-  }, [loaded, companionOn, memoryOn, companionMemory, lastWeekDigest, letters, letterComposing]);
+  }, [loaded, companionOn, memoryOn, companionMemory, lifeDigest, lastWeekDigest, letters, letterComposing]);
 
   /* monthly rollup for the Review screen's Month view */
   const reviewMonthStats = useMemo(() => {
@@ -2099,7 +2183,7 @@ const tinyWins = useMemo(() => {
               </div>
             </div>
 
-            {companionOn && memoryOn && companionMemory && (
+            {companionOn && memoryOn && (companionMemory || lifeDigest) && (
               <div className="memoryCard">
                 <button className="memoryReveal" onClick={() => { setMemoryRevealed((v) => !v); play("nav"); }}>
                   <span>🌿 Sukoon holds a soft memory of your days</span>
@@ -2107,7 +2191,13 @@ const tinyWins = useMemo(() => {
                 </button>
                 {memoryRevealed && (
                   <div className="memoryBody">
-                    <p className="memoryText">{companionMemory}</p>
+                    {companionMemory && <p className="memoryText">{companionMemory}</p>}
+                     {lifeDigest && (
+  <details className="memoryFacts">
+    <summary>and the plain facts it draws on</summary>
+    <pre className="memoryFactsText">{lifeDigest}</pre>
+  </details>
+)}
                     <button className="memoryForget" onClick={() => { setCompanionMemory(""); setMemoryRevealed(false); play("delete"); flash("Gently forgotten"); }}>
                       forget everything
                     </button>
@@ -3663,6 +3753,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .memoryText{margin:0; font-size:13.5px; line-height:1.7; color:var(--ink); white-space:pre-wrap}
 .memoryForget{align-self:flex-start; border:1px solid var(--border); background:var(--surface); color:var(--muted); font-size:11.5px; font-weight:600; padding:6px 13px; border-radius:999px; transition:all .2s}
 .memoryForget:hover{color:var(--rose-deep); border-color:var(--rose)}
+
+.memoryFacts{font-size:12px; color:var(--muted)}
+.memoryFacts summary{cursor:pointer; font-family:'Instrument Serif',serif; font-style:italic; padding:2px 0}
+.memoryFactsText{margin:8px 0 0; font:400 12px/1.7 'Instrument Sans'; color:var(--muted); white-space:pre-wrap; background:var(--surface2); border-radius:10px; padding:10px 12px}
 
 /* weekly letter — correspondence, not a dashboard */
 .letterCard{position:relative; background:linear-gradient(168deg, color-mix(in srgb, var(--pollen-soft) 45%, var(--surface)) 0%, var(--surface) 70%);
