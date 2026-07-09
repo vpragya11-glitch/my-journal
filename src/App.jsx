@@ -20,7 +20,8 @@ const supabase = (SUPABASE_URL.startsWith("https://") && !SUPABASE_ANON_KEY.star
 
 /* storage adapter — Supabase when configured, then window.storage (inside Claude),
    then localStorage, then memory. A local copy is always kept, so a dropped network
-   never loses a save and the app still works offline. */
+   never loses a save and the app still works offline.
+   Every key is scoped to the signed-in user, locally and in the cloud. */
 const localLayer = (() => {
   if (typeof window !== "undefined" && window.storage && window.storage.get) return window.storage;
   const mem = {};
@@ -34,17 +35,26 @@ const localLayer = (() => {
   };
 })();
 
+let currentUserId = null;
+const setStoreUser = (id) => { currentUserId = id || null; };
+/* local keys are namespaced so two accounts on one device never bleed together */
+const lkey = (key) => (currentUserId ? `u:${currentUserId}:${key}` : key);
+
 const store = {
   async get(key) {
-    const local = await localLayer.get(key);
-    if (supabase) {
+    const local = await localLayer.get(lkey(key));
+    if (supabase && currentUserId) {
       try {
-        const { data, error } = await supabase.from("sukoon_store").select("value").eq("key", key).maybeSingle();
+        const { data, error } = await supabase.from("sukoon_store")
+          .select("value").eq("key", key).eq("user_id", currentUserId).maybeSingle();
         if (error) throw error;
-        if (data) { await localLayer.set(key, data.value); return { value: data.value }; }
-        // no cloud row yet — seed it from the local copy if we have one
+        if (data) { await localLayer.set(lkey(key), data.value); return { value: data.value }; }
         if (local && local.value) {
-          try { await supabase.from("sukoon_store").upsert({ key, value: local.value, updated_at: new Date().toISOString() }, { onConflict: "key" }); } catch (e) {}
+          try {
+            await supabase.from("sukoon_store").upsert(
+              { user_id: currentUserId, key, value: local.value, updated_at: new Date().toISOString() },
+              { onConflict: "user_id,key" });
+          } catch (e) {}
         }
         return local;
       } catch (e) { console.warn("Supabase read failed — using local copy", e); }
@@ -52,10 +62,12 @@ const store = {
     return local;
   },
   async set(key, value) {
-    await localLayer.set(key, value); // always keep a local copy first
-    if (supabase) {
+    await localLayer.set(lkey(key), value);
+    if (supabase && currentUserId) {
       try {
-        const { error } = await supabase.from("sukoon_store").upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+        const { error } = await supabase.from("sukoon_store").upsert(
+          { user_id: currentUserId, key, value, updated_at: new Date().toISOString() },
+          { onConflict: "user_id,key" });
         if (error) throw error;
       } catch (e) { console.warn("Supabase write failed — saved locally", e); }
     }
@@ -656,7 +668,7 @@ const PATTERNS = {
 };
 
 /* ═════════════════════════════  ROOT  ═════════════════════════════ */
-export default function Sukoon() {
+function Sukoon({ session }) {
   const [view, setView] = useState("today");
   const [theme, setTheme] = useState("dawn");
   const [filter, setFilter] = useState("all");
@@ -759,6 +771,11 @@ useEffect(() => {
   return [...bag.values()];
 }, [journal, todos]);
 
+   const displayName = useMemo(() => {
+  const m = session?.user?.user_metadata;
+  return m?.full_name || m?.name || "";
+}, [session]);
+
 const recall = useMemo(() => pickMemory(journal, { recentTags, prefer: "age" }), [journal, recentTags]);
    const energyNudge = useMemo(() => pickEnergyNudge(todos), [todos]);
 
@@ -856,6 +873,12 @@ const recall = useMemo(() => pickMemory(journal, { recentTags, prefer: "age" }),
     clearTimeout(toastTimerRef.current);
     setToast(null); undoRef.current = null;
   };
+
+   const signOut = async () => {
+  if (!supabase) return;
+  await supabase.auth.signOut();
+  setStoreUser(null);
+};
 
   /* actions */
   const addTodo = () => {
@@ -1771,7 +1794,7 @@ const tinyWins = useMemo(() => {
             <section className="hero">
               <div className="heroText">
                 <p className="eyebrow">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })} <span className="seasonTag">· {SEASONS[season].icon} {season}</span></p>
-                <h1>{GREET[pod]} <em>Pragya</em><span className="period">.</span></h1>
+                <h1>{GREET[pod]}{displayName && <> <em>{displayName}</em></>}<span className="period">.</span></h1>
                 <p className="sub">{SUBLINE[pod]}</p>
                <p className="affirmation"><span className="affirmationMark">✦</span>{dailyAffirmation()}</p>
                  {recall && (
@@ -2996,6 +3019,80 @@ function TinyWins({ items }) {
   );
 }
 
+/* ── auth: a quiet door, not a checkpoint ─────────────────────────── */
+function AuthGate() {
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const send = async () => {
+    const e = email.trim();
+    if (!e || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { setErr("That doesn't look like an email."); return; }
+    setBusy(true); setErr("");
+    const { error } = await supabase.auth.signInWithOtp({
+      email: e, options: { emailRedirectTo: window.location.origin },
+    });
+    setBusy(false);
+    if (error) setErr("Couldn't send the link. Try again in a moment.");
+    else setSent(true);
+  };
+
+  return (
+    <div className="sk" data-theme="dawn">
+      <style>{CSS}</style>
+      <div className="authWrap">
+        <div className="authCard">
+        <p className="eyebrow">Sukoon</p>
+        {sent ? (
+          <>
+            <h1 className="authTitle"><em>Check your email.</em></h1>
+            <p className="authSub">A link is on its way to {email.trim()}. Open it, and you're in — no password to remember.</p>
+            <button className="authGhost" onClick={() => { setSent(false); setEmail(""); }}>use a different email</button>
+          </>
+        ) : (
+          <>
+            <h1 className="authTitle"><em>A quiet place to return to.</em></h1>
+            <p className="authSub">Enter your email and we'll send you a link. New here or returning — it's the same door.</p>
+            <input className="authInput" type="email" autoComplete="email" placeholder="you@example.com"
+              value={email} disabled={busy}
+              onChange={(e) => { setEmail(e.target.value); setErr(""); }}
+              onKeyDown={(e) => e.key === "Enter" && send()} />
+            {err && <p className="authErr">{err}</p>}
+            <button className="authBtn" onClick={send} disabled={busy || !email.trim()}>
+              {busy ? "Sending…" : "Send me a link"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function Root() {
+  const [session, setSession] = useState(undefined); // undefined = still checking
+
+  useEffect(() => {
+    if (!supabase) { setSession(null); return; } // no backend → local-only, no gate
+    supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s ?? null));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  if (session === undefined) return (
+    <div className="sk" data-theme="dawn">
+      <style>{CSS}</style>
+      <div className="authWrap"><div className="authCard"><p className="authSub">One moment…</p></div></div>
+    </div>
+  );
+  if (!session && supabase) return <AuthGate />;
+
+  // set before SukoonApp's load effect ever runs
+  setStoreUser(session?.user?.id ?? null);
+  // remount on account switch — no state bleeds between users
+  return <Sukoon key={session?.user?.id ?? "local"} session={session} />;
+}
+
 function FocusCard({ item, onToggle, onClear }) {
   if (!item) return null;
   return (
@@ -3875,4 +3972,22 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 @media (max-width:560px){ .ritualRow{flex-direction:column} .ritualChip{width:100%} }
 .cat.energy.catOn{background:var(--surface2); border-color:var(--border2)}
 .energyBadge{font-size:13px; opacity:1}
+.authWrap{min-height:100vh; display:grid; place-items:center; padding:24px; background:var(--bg)}
+.authCard{width:100%; max-width:420px; background:var(--surface); border:1px solid var(--border); border-radius:24px;
+  padding:34px 32px; box-shadow:var(--sh-sm); display:flex; flex-direction:column; gap:14px; animation:rise .5s ease both}
+.authTitle{margin:0; font-family:'Instrument Serif',serif; font-size:clamp(26px,4vw,32px); font-weight:400; line-height:1.25; color:var(--ink)}
+.authTitle em{font-style:italic}
+.authSub{margin:0; font-size:14.5px; line-height:1.65; color:var(--muted); max-width:38ch}
+.authInput{margin-top:6px; width:100%; font:400 15px 'Instrument Sans'; color:var(--ink); background:var(--surface2);
+  border:1px solid var(--border); border-radius:14px; padding:13px 16px; outline:none; transition:border-color .2s}
+.authInput:focus{border-color:var(--moss)}
+.authInput::placeholder{color:var(--faint)}
+.authInput:disabled{opacity:.6}
+.authBtn{margin-top:2px; border:none; background:var(--ink); color:var(--bg); font:600 14.5px 'Instrument Sans';
+  padding:13px 18px; border-radius:14px; transition:opacity .2s, transform .15s}
+.authBtn:hover:not(:disabled){transform:translateY(-1px)}
+.authBtn:disabled{opacity:.45}
+.authGhost{align-self:flex-start; border:none; background:transparent; color:var(--muted); font-size:12.5px;
+  font-family:'Instrument Serif',serif; font-style:italic; padding:4px 0; text-decoration:underline; text-underline-offset:3px}
+.authErr{margin:0; font-size:13px; color:var(--rose-deep)}
 `;
