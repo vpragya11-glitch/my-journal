@@ -1967,16 +1967,13 @@ const tinyWins = useMemo(() => {
                             #{tag}<button onClick={() => removeTodoTag(t.id, tag)} aria-label={`Remove tag ${tag}`}>×</button>
                           </span>
                         ))}
-                        {taggingId === t.id ? (
+                        {taggingId === t.id && (
                           <input className="rowTagInput" autoFocus value={tagInput}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => setTagInput(e.target.value)}
                             onKeyDown={(e) => { if (e.key === "Enter") commitRowTag(t.id); if (e.key === "Escape") { setTaggingId(null); setTagInput(""); } }}
                             onBlur={() => (tagInput.trim() ? commitRowTag(t.id) : setTaggingId(null))}
                             placeholder="tag…" aria-label="Add a tag" />
-                        ) : (
-                          <button className="rowIcon" data-tip="Add a tag"
-                            onClick={(e) => { e.stopPropagation(); setTaggingId(t.id); setTagInput(""); }}>#+</button>
                         )}
                         {subs.length > 0 && (
                           <button className={"stepsBadge" + (subDone === subs.length ? " stepsDone" : "")} data-tip="Steps"
@@ -1993,6 +1990,10 @@ const tinyWins = useMemo(() => {
 )}
                         <span className={"tag " + t.cat}>{t.cat}</span>
                         <div className="rowActions">
+                        {taggingId !== t.id && (
+                          <button className="rowIcon" data-tip="Add a tag"
+                            onClick={(e) => { e.stopPropagation(); setTaggingId(t.id); setTagInput(""); }}>#+</button>
+                        )}
                         {isRecurringItem(t) ? (
                           <button className="rowIcon recurBadge" data-tip="Change how often this repeats"
                             onClick={(e) => { e.stopPropagation(); cycleRowRecur(t.id); }}><Icon name="repeat" /> {recurLabel(recur)}</button>
@@ -3291,7 +3292,7 @@ h3{font-family:'Instrument Serif',serif; font-size:18px}
 .dragHint{margin:0; font-size:11px; font-weight:550; letter-spacing:.04em; color:var(--faint); font-style:italic; font-family:'Instrument Serif',serif}
 .list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:9px}
 .rowGroup{display:flex; flex-direction:column; gap:6px}
-.row{display:flex; align-items:center; gap:11px; flex-wrap:wrap; row-gap:6px; background:var(--surface); border:1px solid var(--border); border-radius:16px;
+.row{display:flex; align-items:center; gap:11px; flex-wrap:nowrap; background:var(--surface); border:1px solid var(--border); border-radius:16px;
   padding:13px 14px; box-shadow:var(--sh-sm); animation:rise .35s ease both; transition:border-color .25s, transform .25s, opacity .3s, box-shadow .2s; cursor:pointer}
 .row:hover{border-color:var(--border2); transform:translateY(-1px)}
 .row.done{opacity:.5}
@@ -3311,8 +3312,8 @@ h3{font-family:'Instrument Serif',serif; font-size:18px}
 .row.done .tick{background:var(--moss); border-color:var(--moss)}
 .row.personal.done .tick{background:var(--rose); border-color:var(--rose)}
 .row.done .tick svg{stroke-dashoffset:0}
-.rowText{flex:1 1 160px; min-width:160px; font-size:14.5px; line-height:1.45; overflow-wrap:anywhere; border-radius:8px; padding:2px 4px; margin:-2px -4px; transition:background .15s;
-  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
+.rowText{flex:1 1 auto; min-width:0; font-size:14.5px; line-height:1.45; border-radius:8px; padding:2px 4px; margin:-2px -4px; transition:background .15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .rowText:hover{background:color-mix(in srgb, var(--ink) 5%, transparent)}
 .recurMark{font-size:11px; opacity:.8; margin-right:5px}
 .rowEdit{flex:1; min-width:0; font:500 14.5px 'Instrument Sans'; color:var(--ink); background:var(--surface2); border:1px solid var(--moss);
@@ -3813,6 +3814,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 /* ── action cluster — right-aligned, tight, revealed on hover as one calm group ── */
 .rowActions{display:inline-flex;align-items:center;gap:3px;margin-left:auto;flex:none}
 .rowActions .rowIcon:hover{background:color-mix(in srgb, var(--moss) 12%, transparent)}
+
+/* one calm line: the text yields, never the badges */
+.row .rowTag, .row .rowTagInput, .row .timeBadge, .row .stepsBadge,
+.row .tag, .row .energyBadge{flex:none}
+/* the two state badges read as a pair: how heavy, what kind */
+.row .energyBadge{margin-right:-6px}
 
 @media (hover:hover){
   .row .rowActions{max-width:0;opacity:0;overflow:hidden;pointer-events:none;transition:max-width .25s ease,opacity .2s ease}
