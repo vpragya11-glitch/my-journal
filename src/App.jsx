@@ -2118,7 +2118,7 @@ const tinyWins = useMemo(() => {
               {/* day panel */}
               <div className="col side">
                 <div className="heroSide">
-                  <BreathCard play={play} />
+                  <BreathCard play={play} embedded />
                   <div className="dayCard">
                     <Arc pct={pct} />
                     <div className="dayText">
@@ -2616,7 +2616,7 @@ const tinyWins = useMemo(() => {
 }
 
 /* ═══ breathing card — the signature ═══ */
-function BreathCard({ play }) {
+function BreathCard({ play, embedded }) {
   const [running, setRunning] = useState(false);
   const [closing, setClosing] = useState(false);
   const [phaseIdx, setPhaseIdx] = useState(0);
@@ -2655,7 +2655,9 @@ function BreathCard({ play }) {
   };
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
-  const active = running || closing;
+  /* inside panic mode the surrounding overlay already is the focus view —
+     don't stack a second one behind it */
+  const active = !embedded && (running || closing);
 
   /* escape to stop, focus the stop control while the overlay is open */
   useEffect(() => {
