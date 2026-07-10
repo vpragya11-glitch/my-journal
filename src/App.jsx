@@ -3031,7 +3031,7 @@ function AuthGate() {
     if (!e || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { setErr("That doesn't look like an email."); return; }
     setBusy(true); setErr("");
     const { error } = await supabase.auth.signInWithOtp({
-      email: e, options: { emailRedirectTo: window.location.origin },
+      email: e, options: { emailRedirectTo: window.location.origin + window.location.pathname },
     });
     setBusy(false);
     if (error) setErr("Couldn't send the link. Try again in a moment.");
