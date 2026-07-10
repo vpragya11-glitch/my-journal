@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@supabase/supabase-js";
 
 /* ─────────────────────────────  SUKOON  ─────────────────────────────
@@ -2626,6 +2627,11 @@ function BreathCard({ play }) {
   const patternRef = useRef(patternKey);
   const stopBtnRef = useRef(null);
 
+  /* the overlay must escape .heroSide — its riseFade animation leaves a
+     transform layer behind, which turns .breath into the containing block
+     for position:fixed. Mount inside .sk so the theme variables resolve. */
+  const [portalRoot, setPortalRoot] = useState(null);
+  useEffect(() => { setPortalRoot(document.querySelector(".sk")); }, []);
   const requestStop = useCallback(() => {
     runningRef.current = false;
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -2682,7 +2688,7 @@ function BreathCard({ play }) {
         <OrbVisual step={step} running={running} cur={cur} phaseIdx={phaseIdx} breaths={breaths} patternLabel={PATTERNS[patternKey].label} compact />
       </div>
 
-      {active && (
+     {active && portalRoot && createPortal(
         <div className="breathOverlay" role="dialog" aria-modal="true" aria-label="Breathing exercise">
           <div className="breathOverlayBg" onClick={!closing ? requestStop : undefined} />
           <div className="breathOverlayContent">
@@ -2700,8 +2706,9 @@ function BreathCard({ play }) {
                 <button ref={stopBtnRef} className="breathStop" onClick={requestStop}>I'm done</button>
               </>
             )}
-          </div>
-        </div>
+         </div>
+        </div>,
+        portalRoot
       )}
     </div>
   );
@@ -3938,7 +3945,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .side > *:nth-child(5){animation-delay:.34s}
 .side > *:nth-child(6){animation-delay:.41s}
 .side > *:nth-child(7){animation-delay:.48s}
-.heroSide > *{animation:riseFade .55s cubic-bezier(.22,1,.36,1) both}
+.heroSide > *{animation:riseFade .55s cubic-bezier(.22,1,.36,1) backwards}
 .heroSide > *:nth-child(1){animation-delay:.10s}
 .heroSide > *:nth-child(2){animation-delay:.24s}
 .gcloud{transform-box:view-box; animation:gdrift 26s ease-in-out infinite}
