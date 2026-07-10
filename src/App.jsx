@@ -732,6 +732,8 @@ function Sukoon({ session }) {
   const [editJournalText, setEditJournalText] = useState("");
   const [dragId, setDragId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
+   const [nameEditing, setNameEditing] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
 
   const soundRef = useRef(true); soundRef.current = soundOn;
   const play = useCallback((n) => { if (soundRef.current && SOUNDS[n]) SOUNDS[n](); }, []);
@@ -2555,7 +2557,29 @@ const tinyWins = useMemo(() => {
 
         <footer className="foot">
           <span>everything is saved as you go · sukoon means calm · press 1 2 3 4 to switch, / to write, c to clear completed</span>
-          {session && <button className="footOut" onClick={signOut}>sign out</button>}
+          <div className="footActions">
+            {nameEditing ? (
+              <input className="footName" autoFocus maxLength={24} value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { setName(nameDraft.trim()); setNameEditing(false); play("tap"); }
+                  if (e.key === "Escape") setNameEditing(false);
+                }}
+                onBlur={() => { setName(nameDraft.trim()); setNameEditing(false); }}
+                placeholder="your name" aria-label="What Sukoon calls you" />
+            ) : (
+              <button className="footLink" onClick={() => { setNameDraft(name || ""); setNameEditing(true); }}>
+                {name ? `called ${name}` : "add a name"}
+              </button>
+            )}
+            {session && (
+              <button className={"footLink footOut" + (outArmed ? " footOutArmed" : "")}
+                onClick={() => (outArmed ? signOut() : setOutArmed(true))}
+                onBlur={() => setOutArmed(false)}>
+                {outArmed ? "tap again to confirm" : "sign out"}
+              </button>
+            )}
+          </div>
         </footer>
       </main>
 
@@ -4083,8 +4107,18 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .footOut{border:1px solid var(--border); background:transparent; color:var(--faint);
   font-family:'Instrument Serif',serif; font-style:italic; font-size:12px;
   padding:5px 14px; border-radius:999px; transition:all .2s}
-.footOut:hover{color:var(--rose-deep); border-color:var(--rose)}
 .exportQuiet{padding:6px 10px; color:var(--faint); border-color:transparent; background:transparent; font-size:13px}
 .exportQuiet:hover{color:var(--muted); border-color:var(--border); background:var(--surface)}
 .exportQuiet{display:inline-grid; place-items:center}
+.foot{display:flex; flex-direction:column; align-items:center; gap:12px}
+.footActions{display:flex; align-items:center; gap:8px}
+.footLink{border:1px solid transparent; background:transparent; color:var(--faint);
+  font-family:'Instrument Serif',serif; font-style:italic; font-size:12px;
+  padding:5px 14px; border-radius:999px; transition:all .2s}
+.footLink:hover{color:var(--muted); border-color:var(--border)}
+.footOut:hover{color:var(--rose-deep); border-color:var(--rose)}
+.footOutArmed{color:var(--rose-deep); border-color:var(--rose)}
+.footName{width:130px; text-align:center; border:1px solid var(--moss); background:var(--surface);
+  color:var(--ink); font-family:'Instrument Serif',serif; font-style:italic; font-size:12px;
+  padding:5px 12px; border-radius:999px; outline:none}
 `;
