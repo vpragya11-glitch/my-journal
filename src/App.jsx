@@ -1778,7 +1778,7 @@ const tinyWins = useMemo(() => {
         </nav>
         <div className="topBtns">
           <button className="round panicBtn" data-tip="Take a quiet moment" onClick={enterPanic}>
-            <svg viewBox="0 0 24 24"><path d="M12 20c-4-3-7-6.2-7-10a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 3.8-3 7-7 10-1.4 1-2.6 1-4 0Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 20.4c-4-3-7-6.2-7-10a4.6 4.6 0 0 1 7-3.4 4.6 4.6 0 0 1 7 3.4c0 3.8-3 7-7 10-.7.5-1.3.5-2 0Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
           <span className="topDivide" />
           <button className={"round" + (soundOn ? " active" : "")} data-tip={soundOn ? "Sounds on" : "Sounds off"}
@@ -1822,7 +1822,7 @@ const tinyWins = useMemo(() => {
                 )}
                 <div className="heroChips">
                   <span className="chip"><b>{pendingAll.length}</b> open intention{pendingAll.length === 1 ? "" : "s"}</span>
-                  <span className="chip"><b>{streak}</b> day streak {streak > 0 ? "🌱" : ""}{frozeThisRun && streak > 0 ? " ❄️" : ""}</span>
+                  <span className="chip"><b>{streak}</b> day streak {streak > 0 ? "🌱" : ""}{frozeThisRun && streak >= 3 ? " ❄️" : ""}</span>
                   <span className={"chip" + (wroteToday ? " chipDone" : "")}>{wroteToday ? "journal written ✓" : "journal awaits"}</span>
                 </div>
                 <div className="ribbon" aria-label="Last 7 days">
