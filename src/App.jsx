@@ -4062,4 +4062,3 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
   font-family:'Instrument Serif',serif; font-style:italic; font-size:13px}
 .authOr::before,.authOr::after{content:""; flex:1; height:1px; background:var(--border)}
 `;
-`;
