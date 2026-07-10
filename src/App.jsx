@@ -1817,9 +1817,6 @@ const tinyWins = useMemo(() => {
     <span className="energyNudgeMark"><LeafMark /></span>{energyNudge.text}
   </p>
 )}
-                {weekStats.totalDone > 0 && (
-                  <p className="heroPromise">You've kept <b>{weekStats.totalDone}</b> promise{weekStats.totalDone === 1 ? "" : "s"} to yourself this week.{pendingAll.length > 0 ? ` ${pendingAll.length === 1 ? "One gentle intention remains" : `${pendingAll.length} gentle intentions remain`}.` : " The slate is clear."}</p>
-                )}
                 <div className="heroChips">
                   <span className="chip"><b>{pendingAll.length}</b> open intention{pendingAll.length === 1 ? "" : "s"}</span>
                   <span className="chip"><b>{streak}</b> day streak {streak > 0 ? "🌱" : ""}{frozeThisRun && streak >= 3 ? " ❄️" : ""}</span>
@@ -1847,6 +1844,9 @@ const tinyWins = useMemo(() => {
                       <>
                         <strong>{doneCount} of {todayTodos.length || 0} complete</strong>
                         <span>{pct === 100 && todayTodos.length ? "The day is full. Well walked." : pct >= 60 ? "Softly, steadily — nearly there." : pct > 0 ? "One small step at a time." : "The page is still fresh."}</span>
+                        {weekStats.totalDone > 0 && (
+                          <span className="dayWeek">{weekStats.totalDone} promise{weekStats.totalDone === 1 ? "" : "s"} kept this week</span>
+                        )}
                       </>
                     )}
                   </div>
@@ -3584,6 +3584,8 @@ h3{font-family:'Instrument Serif',serif; font-size:18px}
 .dayText{display:flex; flex-direction:column; gap:3px}
 .dayText strong{font-size:14.5px; font-weight:600; font-variant-numeric:tabular-nums}
 .dayText span{font-size:12.5px; color:var(--muted); line-height:1.5}
+.dayWeek{margin-top:4px; padding-top:7px; border-top:1px solid var(--border);
+  font-size:11.5px; color:var(--faint); font-variant-numeric:tabular-nums}
 
 /* month heatmap */
 .monthCard{background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:16px 18px; box-shadow:var(--sh-sm); display:flex; flex-direction:column; gap:10px}
