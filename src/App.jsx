@@ -3395,7 +3395,7 @@ h1 em{color:var(--moss); font-feature-settings:"smcp" 0, "c2sc" 0}
 .closeSub{margin:0; font-size:13.5px; color:var(--muted); font-variant-numeric:tabular-nums}
 
 /* layout grid */
-.grid{display:grid; grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr); gap:24px; align-items:start; margin-top:28px}
+.grid{display:grid; grid-template-columns:minmax(0,1.5fr) minmax(260px,380px); gap:24px; align-items:start; margin-top:0}
 .col{display:flex; flex-direction:column; gap:14px; min-width:0}
 .secHead{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
 .secHeadRight{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
