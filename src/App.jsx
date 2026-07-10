@@ -3887,7 +3887,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .energyNudgeMark .leaf{width:15px; height:15px}
 @media (max-width:900px){ .energyNudge{justify-content:center; text-align:center; margin-left:auto; margin-right:auto} }
 
-.tinyWins{display:flex; flex-direction:column; gap:9px; margin:14px 0 6px; animation:riseFade .5s ease both}
+.tinyWins{display:flex; flex-direction:column; gap:9px; margin:14px 0 24px; animation:riseFade .5s ease both}
 .tinyWinsLabel{margin:0 0 2px; font-size:11px; font-weight:650; letter-spacing:.08em; text-transform:uppercase; color:var(--faint)}
 .tinyWinsRow{display:flex; flex-wrap:wrap; gap:8px}
 .tinyWinChip{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:500; color:var(--moss-deep);
@@ -4131,4 +4131,5 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .footName{width:130px; text-align:center; border:1px solid var(--moss); background:var(--surface);
   color:var(--ink); font-family:'Instrument Serif',serif; font-style:italic; font-size:12px;
   padding:5px 12px; border-radius:999px; outline:none}
+  .heroText{display:flex; flex-direction:column; min-width:0}
 `;
