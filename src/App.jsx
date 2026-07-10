@@ -2721,7 +2721,7 @@ function GardenCard({ sprouts, flowers, kept, totalEver, streak, pod }) {
   const MATURITY_NAME = ["a bare bed", "a first seedling", "a young sapling", "a growing tree", "a flourishing garden"][maturity];
   const trunkTop = [102, 90, 74, 56, 40][maturity];
   const canopyR = [0, 5, 10, 15, 20][maturity];
-  const tuftCount = [2, 5, 8, 11, 15][maturity];
+  const tuftCount = [7, 9, 11, 13, 15][maturity];
   const tufts = Array.from({ length: tuftCount }).map((_, i) => 12 + (i * 202) / Math.max(1, tuftCount - 1) + (i % 2 ? 3 : -3));
   const wilds = maturity >= 4 ? [40, 96, 150, 190] : maturity >= 3 ? [70, 176] : [];
 
@@ -2737,7 +2737,7 @@ function GardenCard({ sprouts, flowers, kept, totalEver, streak, pod }) {
     <div className="gardenCard">
       <div className="gardenHead">
         <h3>Your garden</h3>
-        <span className="gardenTotal">🌱 {totalEver} tended · {MATURITY_NAME}</span>
+        {totalEver > 0 && <span className="gardenTotal">🌱 {totalEver} tended · {MATURITY_NAME}</span>}
       </div>
       <div className="gardenScene">
         <svg viewBox="0 0 226 122" className="gardenSvg" aria-label="A small garden that grows as you tend to your day">
@@ -2761,7 +2761,12 @@ function GardenCard({ sprouts, flowers, kept, totalEver, streak, pod }) {
               stroke="var(--moss)" strokeWidth="1.2" fill="none" strokeLinecap="round" opacity="0.5" />
           ))}
           {maturity === 0 ? (
-            <g><ellipse cx="113" cy="104" rx="10" ry="3" fill="var(--moss-soft)" /><circle cx="113" cy="101" r="2" fill="var(--moss-deep)" opacity="0.6" /></g>
+            <g>
+              <ellipse cx="113" cy="103" rx="13" ry="4" fill="var(--moss-soft)" />
+              <ellipse cx="113" cy="102" rx="8" ry="2.5" fill="var(--moss)" opacity="0.35" />
+              <circle cx="113" cy="100" r="2.4" fill="var(--moss-deep)" opacity="0.7" />
+              <path d="M113 100 q 0 -4 -1 -6" stroke="var(--moss-deep)" strokeWidth="1" fill="none" strokeLinecap="round" opacity="0.5" />
+            </g>
           ) : (
             <g className="gtree">
               <path d={`M113 104 L113 ${trunkTop + canopyR - 2}`} stroke="var(--moss-deep)" strokeWidth={maturity >= 3 ? 3 : 2} strokeLinecap="round" />
@@ -2813,7 +2818,6 @@ function GardenCard({ sprouts, flowers, kept, totalEver, streak, pod }) {
               </g>
             );
           })}
-          {grown === 0 && <circle cx="113" cy="106" r="2.4" fill="var(--faint)" />}
         </svg>
       </div>
       <p className="gardenCaption">{caption}</p>
