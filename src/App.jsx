@@ -3064,6 +3064,7 @@ function AuthGate() {
             </button>
           </>
         )}
+        </div>
       </div>
     </div>
   );
