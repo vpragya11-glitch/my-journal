@@ -2739,7 +2739,7 @@ function GardenCard({ sprouts, flowers, kept, totalEver, streak, pod }) {
   const F = Math.min(3, flowers);
   const sproutX = [24, 46, 68, 90, 112, 134];
   const flowerX = [158, 180, 202];
-  const isNight = pod === "night" || pod === "evening";
+  const isNight = pod === "night";
   const grown = S + F + Math.min(2, kept);
    const maturity = totalEver >= 160 ? 4 : totalEver >= 71 ? 3 : totalEver >= 25 ? 2 : totalEver >= 8 ? 1 : 0;
   const MATURITY_NAME = ["a bare bed", "a first seedling", "a young sapling", "a growing tree", "a flourishing garden"][maturity];
@@ -3284,7 +3284,7 @@ em{font-style:italic}
 .navPill:hover{color:var(--ink)}
 .navPill.on{background:var(--ink); color:var(--bg)}
 .navDot{position:absolute; top:8px; right:10px; width:5px; height:5px; border-radius:50%; background:var(--rose)}
-.navPill.on .navDot{background:var(--pollen)}
+.navPill.on .navDot{background:var(--moss-soft)}
 .topBtns{display:flex; gap:8px}
 .topBtns{display:flex; gap:8px; align-items:center}
 .topDivide{width:1px; height:20px; background:var(--border); margin:0 2px}
@@ -3395,7 +3395,7 @@ h1 em{color:var(--moss); font-feature-settings:"smcp" 0, "c2sc" 0}
 .closeSub{margin:0; font-size:13.5px; color:var(--muted); font-variant-numeric:tabular-nums}
 
 /* layout grid */
-.grid{display:grid; grid-template-columns:minmax(0,1.5fr) minmax(260px,380px); gap:24px; align-items:start; margin-top:0}
+.grid{display:grid; grid-template-columns:minmax(0,1.5fr) minmax(260px,380px); gap:24px; align-items:start; margin-top:22px}
 .col{display:flex; flex-direction:column; gap:14px; min-width:0}
 .secHead{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
 .secHeadRight{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
@@ -3885,7 +3885,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .energyNudgeMark .leaf{width:15px; height:15px}
 @media (max-width:900px){ .energyNudge{justify-content:center; text-align:center; margin-left:auto; margin-right:auto} }
 
-.tinyWins{display:flex; flex-direction:column; gap:9px; margin-top:14px; animation:riseFade .5s ease both}
+.tinyWins{display:flex; flex-direction:column; gap:9px; margin:14px 0 6px; animation:riseFade .5s ease both}
 .tinyWinsLabel{margin:0 0 2px; font-size:11px; font-weight:650; letter-spacing:.08em; text-transform:uppercase; color:var(--faint)}
 .tinyWinsRow{display:flex; flex-wrap:wrap; gap:8px}
 .tinyWinChip{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:500; color:var(--moss-deep);
