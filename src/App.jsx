@@ -1833,7 +1833,25 @@ const tinyWins = useMemo(() => {
                   ))}
                 </div>
               </div>
-              <BreathCard play={play} />
+              <div className="heroSide">
+                <BreathCard play={play} />
+                <div className="dayCard">
+                  <Arc pct={pct} />
+                  <div className="dayText">
+                    {(moodKey === "heavy" || moodKey === "foggy") && pendingAll.length > 0 ? (
+                      <>
+                        <strong>Today felt heavier than usual.</strong>
+                        <span>No need to clear the list. Choose just one thing that still matters — the rest can wait.</span>
+                      </>
+                    ) : (
+                      <>
+                        <strong>{doneCount} of {todayTodos.length || 0} complete</strong>
+                        <span>{pct === 100 && todayTodos.length ? "The day is full. Well walked." : pct >= 60 ? "Softly, steadily — nearly there." : pct > 0 ? "One small step at a time." : "The page is still fresh."}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
             </section>
 
             <FocusCard item={focusTodo} onToggle={() => toggleTodo(focusTodo.id)} onClear={() => toggleFocus(focusTodo.id)} />
@@ -2122,22 +2140,6 @@ const tinyWins = useMemo(() => {
 
               {/* day panel */}
               <div className="col side">
-                <div className="dayCard">
-                  <Arc pct={pct} />
-                  <div className="dayText">
-                    {(moodKey === "heavy" || moodKey === "foggy") && pendingAll.length > 0 ? (
-                      <>
-                        <strong>Today felt heavier than usual.</strong>
-                        <span>No need to clear the list. Choose just one thing that still matters — the rest can wait.</span>
-                      </>
-                    ) : (
-                      <>
-                        <strong>{doneCount} of {todayTodos.length || 0} complete</strong>
-                        <span>{pct === 100 && todayTodos.length ? "The day is full. Well walked." : pct >= 60 ? "Softly, steadily — nearly there." : pct > 0 ? "One small step at a time." : "The page is still fresh."}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
                  <GardenCard sprouts={garden.sprouts} flowers={garden.flowers} kept={garden.kept}
                   totalEver={garden.totalEver} streak={streak} pod={pod} />
 
@@ -3326,6 +3328,8 @@ h1 em{color:var(--moss); font-feature-settings:"smcp" 0, "c2sc" 0}
   padding:7px 13px; border-radius:999px; backdrop-filter:blur(6px)}
 .chip b{color:var(--ink); font-weight:650; font-variant-numeric:tabular-nums}
 .chipDone{color:var(--moss); border-color:color-mix(in srgb, var(--moss) 45%, var(--border))}
+.heroSide{display:flex; flex-direction:column; gap:20px; align-items:center; min-width:0}
+.heroSide .dayCard{width:100%}
 
 /* week ribbon */
 .ribbon{display:flex; gap:6px; margin-top:16px}
@@ -3929,6 +3933,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .side > *:nth-child(5){animation-delay:.34s}
 .side > *:nth-child(6){animation-delay:.41s}
 .side > *:nth-child(7){animation-delay:.48s}
+.heroSide > *{animation:riseFade .55s cubic-bezier(.22,1,.36,1) both}
+.heroSide > *:nth-child(1){animation-delay:.10s}
+.heroSide > *:nth-child(2){animation-delay:.24s}
 .gcloud{transform-box:view-box; animation:gdrift 26s ease-in-out infinite}
 @keyframes gdrift{0%,100%{transform:translateX(0)}50%{transform:translateX(14px)}}
 /* journal companion — a quiet presence under an entry */
