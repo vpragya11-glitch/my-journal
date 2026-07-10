@@ -1798,8 +1798,10 @@ const tinyWins = useMemo(() => {
         {/* ══════════ TODAY ══════════ */}
         {view === "today" && (
           <>
-            <section className="hero">
-              <div className="heroText">
+            <section className="today">
+              {/* intentions */}
+              <div className="col">
+                <div className="heroText">
                 <p className="eyebrow">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })} <span className="seasonTag">· {SEASONS[season].icon} {season}</span></p>
                 <h1>{GREET[pod]}{displayName && <>, <em>{displayName}</em></>}<span className="period">.</span></h1>
                 <p className="sub">{SUBLINE[pod]}</p>
@@ -1830,33 +1832,7 @@ const tinyWins = useMemo(() => {
                   ))}
                 </div>
               </div>
-              <div className="heroSide">
-                <BreathCard play={play} />
-                <div className="dayCard">
-                  <Arc pct={pct} />
-                  <div className="dayText">
-                    {(moodKey === "heavy" || moodKey === "foggy") && pendingAll.length > 0 ? (
-                      <>
-                        <strong>Today felt heavier than usual.</strong>
-                        <span>No need to clear the list. Choose just one thing that still matters — the rest can wait.</span>
-                      </>
-                    ) : (
-                      <>
-                        <strong>{doneCount} of {todayTodos.length || 0} complete</strong>
-                        <span>{pct === 100 && todayTodos.length ? "The day is full. Well walked." : pct >= 60 ? "Softly, steadily — nearly there." : pct > 0 ? "One small step at a time." : "The page is still fresh."}</span>
-                        {weekStats.totalDone > 0 && (
-                          <span className="dayWeek">{weekStats.totalDone} promise{weekStats.totalDone === 1 ? "" : "s"} kept this week</span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </section>
 
-            <section className="grid">
-              {/* intentions */}
-              <div className="col">
                 <FocusCard item={focusTodo} onToggle={() => toggleTodo(focusTodo.id)} onClear={() => toggleFocus(focusTodo.id)} />
                 <TinyWins items={tinyWins} />
 
@@ -2140,6 +2116,29 @@ const tinyWins = useMemo(() => {
 
               {/* day panel */}
               <div className="col side">
+                <div className="heroSide">
+                  <BreathCard play={play} />
+                  <div className="dayCard">
+                    <Arc pct={pct} />
+                    <div className="dayText">
+                      {(moodKey === "heavy" || moodKey === "foggy") && pendingAll.length > 0 ? (
+                        <>
+                          <strong>Today felt heavier than usual.</strong>
+                          <span>No need to clear the list. Choose just one thing that still matters — the rest can wait.</span>
+                        </>
+                      ) : (
+                        <>
+                          <strong>{doneCount} of {todayTodos.length || 0} complete</strong>
+                          <span>{pct === 100 && todayTodos.length ? "The day is full. Well walked." : pct >= 60 ? "Softly, steadily — nearly there." : pct > 0 ? "One small step at a time." : "The page is still fresh."}</span>
+                          {weekStats.totalDone > 0 && (
+                            <span className="dayWeek">{weekStats.totalDone} promise{weekStats.totalDone === 1 ? "" : "s"} kept this week</span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                  <GardenCard sprouts={garden.sprouts} flowers={garden.flowers} kept={garden.kept}
                   totalEver={garden.totalEver} streak={streak} pod={pod} />
 
@@ -3317,7 +3316,7 @@ em{font-style:italic}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
 /* hero */
-.hero{display:grid; grid-template-columns:minmax(0,1.35fr) minmax(260px,380px); gap:28px; align-items:start; max-width:1080px}
+.today{display:grid; grid-template-columns:minmax(0,1.35fr) minmax(260px,380px); gap:28px; align-items:start}
 .eyebrow{margin:0 0 10px; font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--faint)}
 h1{font-family:'Instrument Serif',serif; font-size:clamp(34px,4.6vw,52px); line-height:1.06; letter-spacing:-.01em}
 h1 em{color:var(--moss); font-feature-settings:"smcp" 0, "c2sc" 0}
@@ -3330,6 +3329,7 @@ h1 em{color:var(--moss); font-feature-settings:"smcp" 0, "c2sc" 0}
 .chipDone{color:var(--moss); border-color:color-mix(in srgb, var(--moss) 45%, var(--border))}
 .heroSide{display:flex; flex-direction:column; gap:20px; align-items:center; min-width:0}
 .heroSide .dayCard{width:100%}
+.heroText{margin-bottom:8px}
 
 /* week ribbon */
 .ribbon{display:flex; gap:6px; margin-top:16px}
@@ -3395,7 +3395,6 @@ h1 em{color:var(--moss); font-feature-settings:"smcp" 0, "c2sc" 0}
 .closeSub{margin:0; font-size:13.5px; color:var(--muted); font-variant-numeric:tabular-nums}
 
 /* layout grid */
-.grid{display:grid; grid-template-columns:minmax(0,1.5fr) minmax(260px,380px); gap:24px; align-items:start; margin-top:26px}
 .col{display:flex; flex-direction:column; gap:14px; min-width:0}
 .secHead{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
 .secHeadRight{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
@@ -3765,9 +3764,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 
 /* responsive */
 @media (max-width:900px){
-  .hero{grid-template-columns:1fr; text-align:center}
-  .heroText{display:flex; flex-direction:column; align-items:center}
-  .grid{grid-template-columns:1fr}
+  .today{display:flex; flex-direction:column; gap:0}
+  .today > .col{display:contents}
+  .today > .col > *{order:5; margin-bottom:16px}
+  .today > .col > .heroText{order:1; display:flex; flex-direction:column; align-items:center; text-align:center}
+  .today > .col > .heroSide{order:2}
+  .today > .col > .focusCard{order:3}
+  .today > .col > .tinyWins{order:4}
   .orbStage{width:200px; height:200px}
   .orbStageBig{width:260px; height:260px}
   .orbStageBig .orb{width:170px; height:170px}
