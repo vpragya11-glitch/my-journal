@@ -732,8 +732,9 @@ function Sukoon({ session }) {
   const [editJournalText, setEditJournalText] = useState("");
   const [dragId, setDragId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
-   const [nameEditing, setNameEditing] = useState(false);
+  const [nameEditing, setNameEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
+  const [outArmed, setOutArmed] = useState(false);
 
   const soundRef = useRef(true); soundRef.current = soundOn;
   const play = useCallback((n) => { if (soundRef.current && SOUNDS[n]) SOUNDS[n](); }, []);
