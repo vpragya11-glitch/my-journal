@@ -3315,7 +3315,7 @@ em{font-style:italic}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
 /* hero */
-.hero{display:grid; grid-template-columns:minmax(0,1.35fr) minmax(260px,380px); gap:28px; align-items:center; max-width:1080px}
+.hero{display:grid; grid-template-columns:minmax(0,1.35fr) minmax(260px,380px); gap:28px; align-items:start; max-width:1080px}
 .eyebrow{margin:0 0 10px; font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--faint)}
 h1{font-family:'Instrument Serif',serif; font-size:clamp(34px,4.6vw,52px); line-height:1.06; letter-spacing:-.01em}
 h1 em{color:var(--moss); font-feature-settings:"smcp" 0, "c2sc" 0}
