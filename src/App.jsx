@@ -536,7 +536,7 @@ const todaysStarters = () => {
    in one gentle motion rather than one at a time */
 const RITUAL_BUNDLES = [
   {
-    id: "morning", label: "Morning ritual", icon: "🌅",
+    id: "morning", label: "Morning ritual", icon: "sunrise",
     blurb: "A soft way to begin",
     items: [
       { text: "Drink a glass of water", cat: "personal" },
@@ -545,7 +545,7 @@ const RITUAL_BUNDLES = [
     ],
   },
   {
-    id: "evening", label: "Evening ritual", icon: "🌙",
+    id: "evening", label: "Evening ritual", icon: "moon",
     blurb: "A soft way to close",
     items: [
       { text: "Tidy your desk for tomorrow", cat: "work" },
@@ -554,7 +554,7 @@ const RITUAL_BUNDLES = [
     ],
   },
   {
-    id: "reset", label: "Reset ritual", icon: "🧺",
+    id: "reset", label: "Reset ritual", icon: "basket",
     blurb: "For when things feel scattered",
     items: [
       { text: "Clear your inbox for 10 minutes", cat: "work" },
@@ -1914,13 +1914,13 @@ const tinyWins = useMemo(() => {
                   )}
                 </div>
 
-                {todayTodos.length === 0 && (
+                {todayTodos.length === 0 && journal.length > 0 && (
                   <div className="starters">
                     <p className="startersLabel">Try one to begin</p>
                     <div className="starterRow">
                       {starters.map((s) => (
                         <button key={s.text} className={"starterChip " + s.cat} onClick={() => addStarter(s)}>
-                          <span className="starterIcon">{s.icon}</span>{s.text}
+                          <i className={"starterDot " + s.cat} />{s.text}
                         </button>
                       ))}
                     </div>
@@ -1933,7 +1933,7 @@ const tinyWins = useMemo(() => {
                     {RITUAL_BUNDLES.map((b) => (
                       <button key={b.id} className="ritualChip" onClick={() => addBundle(b)}
                         data-tip={b.items.map((i) => i.text).join(" · ")}>
-                        <span className="ritualIcon">{b.icon}</span>
+                       <span className="ritualIcon"><Icon name={b.icon} /></span>
                         <span className="ritualText"><b>{b.label}</b><small>{b.blurb}</small></span>
                       </button>
                     ))}
@@ -2987,7 +2987,10 @@ function Icon({ name }) {
     bell: <><path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 4.4 1.8 5.5 1.8 5.5H4.7S6.5 14.4 6.5 10Z"/><path d="M10.4 19a1.7 1.7 0 0 0 3.2 0"/></>,
     star: <path d="M12 3.4l2.7 5.6 6.1.9-4.4 4.4 1 6.1L12 17.3l-5.4 3.1 1-6.1-4.4-4.4 6.1-.9L12 3.4Z"/>,
     bookmark: <path d="M7 4h10a1 1 0 0 1 1 1v14.4a.6.6 0 0 1-.94.5L12 16.8l-5.06 3.6A.6.6 0 0 1 6 19.9V5a1 1 0 0 1 1-1Z"/>,
-    copy: <><rect x="8" y="8" width="12" height="12" rx="2.4"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></>,
+   copy: <><rect x="8" y="8" width="12" height="12" rx="2.4"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></>,
+    sunrise: <><path d="M12 4.5v2M5.6 7.1l1.4 1.4M18.4 7.1L17 8.5M3 18h18M6.5 18a5.5 5.5 0 0 1 11 0"/><path d="M8 21h8"/></>,
+    moon: <path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/>,
+    basket: <><path d="M4.5 9.5h15l-1.4 8a2 2 0 0 1-2 1.7H7.9a2 2 0 0 1-2-1.7l-1.4-8Z"/><path d="M8.5 9.5 11 4M15.5 9.5 13 4"/><path d="M9.5 13v3M14.5 13v3"/></>,
   };
   return <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">{shapes[name] || null}</svg>;
 }
@@ -3442,6 +3445,9 @@ h3{font-family:'Instrument Serif',serif; font-size:18px}
 .starterChip.work:hover{border-color:var(--moss); background:var(--moss-soft)}
 .starterChip.personal:hover{border-color:var(--rose); background:var(--rose-soft)}
 .starterIcon{font-size:15px}
+.starterDot{width:6px; height:6px; border-radius:50%; flex:none}
+.starterDot.work{background:var(--moss)}
+.starterDot.personal{background:var(--rose)}
 
 /* tag filtering */
 .tagFilterRow{display:flex; flex-wrap:wrap; align-items:center; gap:6px}
@@ -4034,7 +4040,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
   padding:10px 16px; border-radius:16px; transition:all .2s; box-shadow:var(--sh-sm); text-align:left}
 .ritualChip:hover{border-color:var(--moss); background:var(--moss-soft); transform:translateY(-1px)}
 .ritualChip:active{transform:scale(.97)}
-.ritualIcon{font-size:19px; flex:none}
+.ritualIcon{flex:none; display:grid; place-items:center; color:var(--moss); width:20px; height:20px}
+.ritualIcon .ic{width:20px; height:20px}
+.ritualChip:hover .ritualIcon{color:var(--moss-deep)}
 .ritualText{display:flex; flex-direction:column; gap:1px}
 .ritualText b{font-size:13.5px; font-weight:600; color:var(--ink)}
 .ritualText small{font-size:11px; color:var(--muted); font-style:italic; font-family:'Instrument Serif',serif}
