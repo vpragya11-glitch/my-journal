@@ -773,7 +773,7 @@ useEffect(() => {
 }, [journal, todos]);
 
    const metaName = session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || "";
-  const displayName = name || metaName;
+  const displayName = name;
 
 const recall = useMemo(() => pickMemory(journal, { recentTags, prefer: "age" }), [journal, recentTags]);
    const energyNudge = useMemo(() => pickEnergyNudge(todos), [todos]);
@@ -1744,11 +1744,11 @@ const tinyWins = useMemo(() => {
     );
   }
 
-   if (name === null && !metaName) {
+   if (name === null) {
     return (
       <div className="sk" data-theme={theme} data-pod={pod} data-season={season}>
         <style>{CSS}</style>
-        <NamePrompt onSave={(v) => setName(v)} onSkip={() => setName("")} />
+        <NamePrompt initial={metaName} onSave={(v) => setName(v)} onSkip={() => setName("")} />
       </div>
     );
   }
@@ -3033,8 +3033,8 @@ function TinyWins({ items }) {
 }
 
 /* ── first run: the app asks, once ────────────────────────────────── */
-function NamePrompt({ onSave, onSkip }) {
-  const [v, setV] = useState("");
+function NamePrompt({ initial, onSave, onSkip }) {
+  const [v, setV] = useState((initial || "").split(" ")[0]);
   const clean = v.trim().slice(0, 24);
 
   return (
@@ -3287,7 +3287,7 @@ em{font-style:italic}
 .hero{display:grid; grid-template-columns:minmax(0,1.35fr) minmax(260px,1fr); gap:28px; align-items:center}
 .eyebrow{margin:0 0 10px; font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--faint)}
 h1{font-family:'Instrument Serif',serif; font-size:clamp(34px,4.6vw,52px); line-height:1.06; letter-spacing:-.01em}
-h1 em{color:var(--moss)}
+h1 em{color:var(--moss); font-feature-settings:"smcp" 0, "c2sc" 0}
 .period{color:var(--rose)}
 .sub{margin:14px 0 0; font-size:16px; color:var(--muted); line-height:1.6; max-width:42ch}
 .heroChips{display:flex; flex-wrap:wrap; gap:8px; margin-top:20px}
