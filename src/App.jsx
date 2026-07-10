@@ -1848,9 +1848,6 @@ const tinyWins = useMemo(() => {
                 <div className="secHead">
                   <h2>Intentions</h2>
                   <div className="secHeadRight">
-                    <button className="exportLink" onClick={copyAsSlack} data-tip="Copy today's completed intentions, formatted for Slack">Copy as Slack ⎘</button>
-                    <button className="exportLink" onClick={exportToCalendar}>Export to calendar ↓</button>
-                    {doneCount > 0 && <button className="exportLink" onClick={clearCompleted} data-tip="Remove completed, one-time intentions (or press C)">Clear completed ✓</button>}
                     <div className="sortToggle" role="radiogroup" aria-label="Sort intentions">
                       <button role="radio" aria-checked={sortMode === "manual"} className={"sortPill" + (sortMode === "manual" ? " sortOn" : "")}
                         data-tip="Drag to arrange your own order" onClick={() => { setSortMode("manual"); play("nav"); }}>⠿ Manual</button>
@@ -1870,6 +1867,9 @@ const tinyWins = useMemo(() => {
                         {activeFilterCount} filter{activeFilterCount === 1 ? "" : "s"} active ×
                       </button>
                     )}
+                    {doneCount > 0 && <button className="exportLink" onClick={clearCompleted} data-tip="Remove completed, one-time intentions (or press C)">Clear completed ✓</button>}
+                    <button className="exportLink exportQuiet" onClick={copyAsSlack} data-tip="Copy today's completed intentions, formatted for Slack"><Icon name="copy" /></button>
+<button className="exportLink exportQuiet" onClick={exportToCalendar} data-tip="Export timed intentions to your calendar"><Icon name="calendar" /></button>
                   </div>
                 </div>
 
@@ -3438,7 +3438,7 @@ h3{font-family:'Instrument Serif',serif; font-size:18px}
 .starters{display:flex; flex-direction:column; gap:10px; padding:6px 2px 2px; animation:rise .4s ease both}
 .startersLabel{margin:0; font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--faint)}
 .starterRow{display:flex; flex-wrap:wrap; gap:8px}
-.starterChip{display:flex; align-items:center; gap:8px; border:1px dashed var(--border2); background:var(--surface);
+.starterChip{display:flex; align-items:center; gap:8px; border:1px dashed var(--border2); background:transparent;
   color:var(--ink); font-size:13.5px; font-weight:500; padding:10px 16px; border-radius:999px; transition:all .2s}
 .starterChip:hover{border-style:solid; transform:translateY(-1px); box-shadow:var(--sh-sm)}
 .starterChip:active{transform:scale(.97)}
@@ -4036,9 +4036,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .ritualCard{display:flex; flex-direction:column; gap:10px; padding:2px 2px 4px}
 .ritualLabel{margin:0; font-size:12px; font-weight:600; letter-spacing:.04em; color:var(--faint)}
 .ritualRow{display:flex; flex-wrap:wrap; gap:9px}
-.ritualChip{display:flex; align-items:center; gap:10px; border:1px solid var(--border); background:var(--surface);
-  padding:10px 16px; border-radius:16px; transition:all .2s; box-shadow:var(--sh-sm); text-align:left}
-.ritualChip:hover{border-color:var(--moss); background:var(--moss-soft); transform:translateY(-1px)}
+.ritualChip{display:flex; align-items:center; gap:10px; border:1px dashed var(--border2); background:transparent;
+  padding:10px 16px; border-radius:16px; transition:all .2s; text-align:left}
+
+.ritualChip:hover{border-color:var(--moss); border-style:solid; background:var(--moss-soft); transform:translateY(-1px)}
 .ritualChip:active{transform:scale(.97)}
 .ritualIcon{flex:none; display:grid; place-items:center; color:var(--moss); width:20px; height:20px}
 .ritualIcon .ic{width:20px; height:20px}
@@ -4083,4 +4084,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
   font-family:'Instrument Serif',serif; font-style:italic; font-size:12px;
   padding:5px 14px; border-radius:999px; transition:all .2s}
 .footOut:hover{color:var(--rose-deep); border-color:var(--rose)}
+.exportQuiet{padding:6px 10px; color:var(--faint); border-color:transparent; background:transparent; font-size:13px}
+.exportQuiet:hover{color:var(--muted); border-color:var(--border); background:var(--surface)}
+.exportQuiet{display:inline-grid; place-items:center}
 `;
