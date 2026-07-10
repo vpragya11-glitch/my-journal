@@ -1777,9 +1777,10 @@ const tinyWins = useMemo(() => {
           ))}
         </nav>
         <div className="topBtns">
-           <button className="round panicBtn" data-tip="Take a quiet moment" onClick={enterPanic}>
-  <svg viewBox="0 0 24 24"><path d="M12 20c-4-3-7-6.2-7-10a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 3.8-3 7-7 10-1.4 1-2.6 1-4 0Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
-</button>
+          <button className="round panicBtn" data-tip="Take a quiet moment" onClick={enterPanic}>
+            <svg viewBox="0 0 24 24"><path d="M12 20c-4-3-7-6.2-7-10a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 3.8-3 7-7 10-1.4 1-2.6 1-4 0Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <span className="topDivide" />
           <button className={"round" + (soundOn ? " active" : "")} data-tip={soundOn ? "Sounds on" : "Sounds off"}
             onClick={() => { setSoundOn((s) => !s); if (!soundOn) SOUNDS.tap(); }} aria-pressed={soundOn}>
             <svg viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9H5z" fill="currentColor" opacity=".9"/><path d="M17.5 9.5a4 4 0 0 1 0 5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" opacity={soundOn ? 1 : 0.25}/></svg>
@@ -1789,13 +1790,6 @@ const tinyWins = useMemo(() => {
               ? <svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z" fill="currentColor"/></svg>
               : <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.4" fill="currentColor"/><path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21M5.6 5.6l1.7 1.7M16.7 16.7l1.7 1.7M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>}
           </button>
-          <button className="round" data-tip="Download a backup of your data" onClick={exportAllData}>
-            <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
-          <button className="round" data-tip="Merge in a backup file" onClick={() => importInputRef.current && importInputRef.current.click()}>
-            <svg viewBox="0 0 24 24"><path d="M12 21V9m0 0l-4 4m4-4l4 4M5 5h14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
-          <input ref={importInputRef} type="file" accept="application/json" style={{ display: "none" }} onChange={importAllData} />
         </div>
       </header>
 
@@ -2573,6 +2567,9 @@ const tinyWins = useMemo(() => {
                 {name ? `called ${name}` : "add a name"}
               </button>
             )}
+            <button className="footLink" onClick={exportAllData}>back up</button>
+            <button className="footLink" onClick={() => importInputRef.current && importInputRef.current.click()}>restore</button>
+            <input ref={importInputRef} type="file" accept="application/json" style={{ display: "none" }} onChange={importAllData} />
             {session && (
               <button className={"footLink footOut" + (outArmed ? " footOutArmed" : "")}
                 onClick={() => (outArmed ? signOut() : setOutArmed(true))}
@@ -3287,6 +3284,8 @@ em{font-style:italic}
 .navDot{position:absolute; top:8px; right:10px; width:5px; height:5px; border-radius:50%; background:var(--rose)}
 .navPill.on .navDot{background:var(--pollen)}
 .topBtns{display:flex; gap:8px}
+.topBtns{display:flex; gap:8px; align-items:center}
+.topDivide{width:1px; height:20px; background:var(--border); margin:0 2px}
 .round{width:38px; height:38px; border:1px solid var(--border); background:color-mix(in srgb, var(--surface) 72%, transparent);
   border-radius:50%; display:grid; place-items:center; color:var(--muted); transition:all .2s; backdrop-filter:blur(8px)}
 .round svg{width:17px; height:17px}
@@ -3375,7 +3374,8 @@ h1 em{color:var(--moss); font-feature-settings:"smcp" 0, "c2sc" 0}
 .panicLine{margin:0; font-family:'Instrument Serif',serif; font-style:italic; font-size:clamp(18px,2.6vw,24px); color:var(--ink); max-width:32ch}
 .panicExit{border:1px solid var(--border); background:var(--surface); color:var(--muted); font-size:13.5px; font-weight:600; padding:10px 22px; border-radius:999px; transition:all .2s}
 .panicExit:hover{color:var(--ink); border-color:var(--border2)}
-.panicBtn:hover{color:var(--lilac)}
+.panicBtn{background:var(--rose-soft); border-color:color-mix(in srgb, var(--rose) 32%, var(--border)); color:var(--rose-deep)}
+.panicBtn:hover{background:var(--rose); border-color:var(--rose); color:var(--surface)}
 /* full-focus breathing overlay */
 .breathOverlay{position:fixed; inset:0; z-index:50; display:grid; place-items:center}
 .breathOverlayBg{position:absolute; inset:0; background:color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter:blur(10px) saturate(1.05); animation:overlayIn .4s ease both}
