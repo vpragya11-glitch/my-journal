@@ -2553,7 +2553,10 @@ const tinyWins = useMemo(() => {
         )}
         </div>
 
-        <footer className="foot">everything is saved as you go · sukoon means calm · press 1 2 3 4 to switch, / to write, c to clear completed</footer>
+        <footer className="foot">
+          <span>everything is saved as you go · sukoon means calm · press 1 2 3 4 to switch, / to write, c to clear completed</span>
+          {session && <button className="footOut" onClick={signOut}>sign out</button>}
+        </footer>
       </main>
 
       {toast && (
@@ -4061,4 +4064,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button
 .authOr{display:flex; align-items:center; gap:12px; margin:2px 0; color:var(--faint);
   font-family:'Instrument Serif',serif; font-style:italic; font-size:13px}
 .authOr::before,.authOr::after{content:""; flex:1; height:1px; background:var(--border)}
+.foot{display:flex; flex-direction:column; align-items:center; gap:10px}
+.footOut{border:1px solid var(--border); background:transparent; color:var(--faint);
+  font-family:'Instrument Serif',serif; font-style:italic; font-size:12px;
+  padding:5px 14px; border-radius:999px; transition:all .2s}
+.footOut:hover{color:var(--rose-deep); border-color:var(--rose)}
 `;
