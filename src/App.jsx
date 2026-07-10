@@ -1891,9 +1891,9 @@ const tinyWins = useMemo(() => {
                     <button className={"cat work" + (draftCat === "work" ? " catOn" : "")} onClick={() => { setDraftCat("work"); play("nav"); }}>Work</button>
                     <button className={"cat personal" + (draftCat === "personal" ? " catOn" : "")} onClick={() => { setDraftCat("personal"); play("nav"); }}>Personal</button>
                     <button className={"cat repeat" + (draftRecur.type !== "none" ? " catOn" : "")} data-tip="Cycle repeat: none → daily → weekdays → custom"
-                      onClick={cycleDraftRecur}>🔁 {recurLabel(draftRecur) || "Repeat"}</button>
+                      onClick={cycleDraftRecur}><Icon name="repeat" /> {recurLabel(draftRecur) || "Repeat"}</button>
                     <button className={"cat someday" + (draftBucket === "someday" ? " catOn" : "")} data-tip="Save for later, pull in when ready"
-                      onClick={() => { setDraftBucket((b) => (b === "someday" ? "today" : "someday")); play("nav"); }}>🗂 Someday</button>
+                      onClick={() => { setDraftBucket((b) => (b === "someday" ? "today" : "someday")); play("nav"); }}><Icon name="bookmark" /> Someday</button>
                      <button className={"cat energy" + (draftEnergy ? " catOn" : "")} data-tip="How much does this ask of you? none → low → medium → high"
   onClick={cycleDraftEnergy}>
   {draftEnergy ? `${ENERGY[draftEnergy]} ${draftEnergy}` : "Energy"}
