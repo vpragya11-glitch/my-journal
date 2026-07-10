@@ -3315,7 +3315,7 @@ em{font-style:italic}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
 /* hero */
-.hero{display:grid; grid-template-columns:minmax(0,1.35fr) minmax(260px,1fr); gap:28px; align-items:center}
+.hero{display:grid; grid-template-columns:minmax(0,1.35fr) minmax(260px,380px); gap:28px; align-items:center; max-width:1080px}
 .eyebrow{margin:0 0 10px; font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--faint)}
 h1{font-family:'Instrument Serif',serif; font-size:clamp(34px,4.6vw,52px); line-height:1.06; letter-spacing:-.01em}
 h1 em{color:var(--moss); font-feature-settings:"smcp" 0, "c2sc" 0}
@@ -3341,7 +3341,7 @@ h1 em{color:var(--moss); font-feature-settings:"smcp" 0, "c2sc" 0}
   padding:6px 12px; border-radius:999px; transition:all .2s}
 .patternPill:hover{border-color:var(--border2); color:var(--ink)}
 .patternPill.patOn{background:var(--moss-soft); border-color:var(--moss); color:var(--moss-deep)}
-.orbStage{position:relative; width:225px; height:225px; display:grid; place-items:center; cursor:pointer; border-radius:50%}
+.orbStage{position:relative; width:190px; height:190px; display:grid; place-items:center; cursor:pointer; border-radius:50%}
 .orbHalo{position:absolute; inset:-8px; border-radius:50%; border:1px dashed var(--border2); animation:slowSpin 40s linear infinite; opacity:.7}
 @keyframes slowSpin{to{transform:rotate(360deg)}}
 .orb{position:absolute; width:150px; height:150px; border-radius:50%;
@@ -3354,7 +3354,7 @@ h1 em{color:var(--moss); font-feature-settings:"smcp" 0, "c2sc" 0}
   0%,100%{box-shadow:var(--sh), inset 0 2px 14px rgba(255,255,255,.35), 0 0 46px 8px color-mix(in srgb, var(--pollen) 24%, transparent)}
   50%{box-shadow:var(--sh), inset 0 2px 14px rgba(255,255,255,.35), 0 0 74px 18px color-mix(in srgb, var(--rose) 30%, transparent)}
 }
-@keyframes idlePulse{0%,100%{transform:scale(.7)}50%{transform:scale(.78)}}
+@keyframes idlePulse{0%,100%{transform:scale(.82)}50%{transform:scale(.9)}}
 .orbCore{position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:4px; pointer-events:none; text-align:center}
 .orbPhase{font-family:'Instrument Serif',serif; font-size:20px; font-style:italic; color:var(--ink); text-shadow:0 1px 8px color-mix(in srgb, var(--bg) 70%, transparent)}
 .orbCount{font-size:11.5px; font-weight:550; letter-spacing:.06em; color:var(--muted); text-transform:lowercase; font-variant-numeric:tabular-nums}
