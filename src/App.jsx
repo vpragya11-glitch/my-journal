@@ -3558,9 +3558,11 @@ h3{font-family:'Instrument Serif',serif; font-size:18px}
 .monthNav button{width:24px; height:24px; border:1px solid var(--border); background:transparent; border-radius:8px; color:var(--muted); font-size:13px; display:grid; place-items:center}
 .monthNav button:hover:not(:disabled){color:var(--ink); border-color:var(--border2)}
 .monthNav button:disabled{opacity:.35; cursor:default}
-.monthDow{display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:10px; font-weight:600; color:var(--faint); letter-spacing:.04em}
-.monthGrid{display:grid; grid-template-columns:repeat(7,1fr); gap:3px}
-.mCell{position:relative; aspect-ratio:1; display:grid; place-items:center; font-size:10px; font-weight:550; color:var(--muted); border-radius:7px; background:var(--surface2); font-variant-numeric:tabular-nums; transition:background .3s}
+.monthDow{display:grid; grid-template-columns:repeat(7,1fr); justify-items:center; font-size:10px; font-weight:600; color:var(--faint); letter-spacing:.04em}
+.monthDow span{width:100%; max-width:34px; text-align:center}
+.monthGrid{display:grid; grid-template-columns:repeat(7,1fr); gap:3px; justify-items:center}
+.monthGrid .mCell{width:100%; max-width:34px}
+.mCell{position:relative; aspect-ratio:1; max-height:34px; display:grid; place-items:center; font-size:10px; font-weight:550; color:var(--muted); border-radius:6px; background:var(--surface2); font-variant-numeric:tabular-nums; transition:background .3s}
 .mCell.mEmpty{background:transparent}
 .mCell.mActive{background:color-mix(in srgb, var(--moss) 22%, var(--surface2)); color:var(--ink)}
 .mCell.mMood-bright{background:color-mix(in srgb, #E7C766 40%, var(--surface2)); color:var(--ink)}
