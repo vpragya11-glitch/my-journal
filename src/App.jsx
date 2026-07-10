@@ -244,7 +244,7 @@ const partOfDay = () => {
   if (h < 5) return "night"; if (h < 12) return "morning";
   if (h < 17) return "afternoon"; if (h < 21) return "evening"; return "night";
 };
-const GREET = { morning: "Good morning,", afternoon: "Good afternoon,", evening: "Good evening,", night: "A quiet night," };
+const GREET = { morning: "Good morning", afternoon: "Good afternoon", evening: "Good evening", night: "A quiet night" };
 const SUBLINE = {
   morning: "The day is unhurried. Begin softly.",
   afternoon: "A pause, a breath, and then the next small thing.",
@@ -699,6 +699,7 @@ function Sukoon({ session }) {
   const [reviewMonthOffset, setReviewMonthOffset] = useState(0);
   const [sortMode, setSortMode] = useState("manual");
   const [somedayOpen, setSomedayOpen] = useState(false);
+  const [name, setName] = useState(null); // null = never asked · "" = declined · "Pragya" = answered
 
   const [draft, setDraft] = useState("");
   const [draftCat, setDraftCat] = useState("work");
@@ -771,10 +772,8 @@ useEffect(() => {
   return [...bag.values()];
 }, [journal, todos]);
 
-   const displayName = useMemo(() => {
-  const m = session?.user?.user_metadata;
-  return m?.full_name || m?.name || "";
-}, [session]);
+   const metaName = session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || "";
+  const displayName = name || metaName;
 
 const recall = useMemo(() => pickMemory(journal, { recentTags, prefer: "age" }), [journal, recentTags]);
    const energyNudge = useMemo(() => pickEnergyNudge(todos), [todos]);
@@ -796,6 +795,7 @@ const recall = useMemo(() => pickMemory(journal, { recentTags, prefer: "age" }),
           if (Array.isArray(d.letters)) setLetters(d.letters);
           else if (d.weeklyLetter && typeof d.weeklyLetter === "object") setLetters([d.weeklyLetter]); // migrate old single letter
           if (d.theme) setTheme(d.theme);
+           if (typeof d.name === "string") setName(d.name);
           found = true;
         }
       } catch (e) { /* first visit */ }
@@ -831,11 +831,11 @@ const recall = useMemo(() => pickMemory(journal, { recentTags, prefer: "age" }),
   useEffect(() => {
     if (!loaded) return;
     const t = setTimeout(async () => {
-     try { await store.set(STORAGE_KEY, JSON.stringify({ todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, letters, theme })); }
+     try { await store.set(STORAGE_KEY, JSON.stringify({ todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, letters, theme, name })); }
       catch (e) { console.error("save failed", e); }
     }, 400);
     return () => clearTimeout(t);
-  }, [todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, letters, theme, loaded]);
+  }, [todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, letters, theme, name, loaded]);
   /* schedule gentle reminder notifications for intentions with a time set,
      while this tab stays open — browsers don't allow background delivery otherwise */
   useEffect(() => {
@@ -1267,7 +1267,7 @@ const toggleFocus = (id) => {
   };
 
   const exportAllData = () => {
-   const payload = { version: 1, exportedAt: Date.now(), todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, letters, theme };
+   const payload = { version: 1, exportedAt: Date.now(), todos, journal, pocket, gratitude, soundOn, companionOn, memoryOn, companionMemory, letters, theme, name };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1291,6 +1291,7 @@ const toggleFocus = (id) => {
         setJournal((cur) => { const r = mergeById(cur, d.journal); totalAdded += r.added || 0; return r.list; });
         setPocket((cur) => { const r = mergeById(cur, d.pocket); totalAdded += r.added || 0; return r.list; });
         setGratitude((cur) => { const r = mergeById(cur, d.gratitude); totalAdded += r.added || 0; return r.list; });
+        if (typeof d.name === "string" && !name) setName(d.name);
         flash(totalAdded > 0 ? `Merged ${totalAdded} item${totalAdded === 1 ? "" : "s"} from backup` : "Backup already up to date");
       } catch (err) { flash("That file couldn't be read"); }
     };
@@ -1743,6 +1744,15 @@ const tinyWins = useMemo(() => {
     );
   }
 
+   if (name === null && !metaName) {
+    return (
+      <div className="sk" data-theme={theme} data-pod={pod} data-season={season}>
+        <style>{CSS}</style>
+        <NamePrompt onSave={(v) => setName(v)} onSkip={() => setName("")} />
+      </div>
+    );
+  }
+
   return (
     <div className="sk" data-theme={theme} data-pod={pod} data-mood={moodKey} data-season={season}>
       <style>{CSS}</style>
@@ -1794,7 +1804,7 @@ const tinyWins = useMemo(() => {
             <section className="hero">
               <div className="heroText">
                 <p className="eyebrow">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })} <span className="seasonTag">· {SEASONS[season].icon} {season}</span></p>
-                <h1>{GREET[pod]}{displayName && <> <em>{displayName}</em></>}<span className="period">.</span></h1>
+                <h1>{GREET[pod]}{displayName && <>, <em>{displayName}</em></>}<span className="period">.</span></h1>
                 <p className="sub">{SUBLINE[pod]}</p>
                <p className="affirmation"><span className="affirmationMark">✦</span>{dailyAffirmation()}</p>
                  {recall && (
@@ -3014,6 +3024,28 @@ function TinyWins({ items }) {
             <i>{it.icon}</i>{it.text.slice(0, 42)}{it.text.length > 42 ? "…" : ""}
           </span>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── first run: the app asks, once ────────────────────────────────── */
+function NamePrompt({ onSave, onSkip }) {
+  const [v, setV] = useState("");
+  const clean = v.trim().slice(0, 24);
+
+  return (
+    <div className="authWrap">
+      <div className="authCard">
+        <p className="eyebrow">Sukoon</p>
+        <h1 className="authTitle"><em>What should Sukoon call you?</em></h1>
+        <p className="authSub">Just a name for the mornings. You can leave it — the greeting stands on its own.</p>
+        <input className="authInput" type="text" autoComplete="given-name" placeholder="Pragya"
+          value={v} maxLength={24} autoFocus
+          onChange={(e) => setV(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && clean && onSave(clean)} />
+        <button className="authBtn" onClick={() => onSave(clean)} disabled={!clean}>Begin</button>
+        <button className="authGhost" onClick={onSkip}>skip this</button>
       </div>
     </div>
   );
