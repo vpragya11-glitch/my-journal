@@ -1879,7 +1879,7 @@ const tinyWins = useMemo(() => {
                 <div className="compose">
                   <input ref={todoInputRef} value={draft} onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => { keySound(e); if (e.key === "Enter") addTodo(); }}
-                    placeholder="Set a gentle intention… (press / to focus)" aria-label="New intention" />
+                    placeholder="Set a gentle intention…" aria-label="New intention" />
                   {draftTags.length > 0 && (
                     <div className="draftTagRow">
                       {draftTags.map((tag) => (
@@ -1894,9 +1894,9 @@ const tinyWins = useMemo(() => {
                       onClick={cycleDraftRecur}>🔁 {recurLabel(draftRecur) || "Repeat"}</button>
                     <button className={"cat someday" + (draftBucket === "someday" ? " catOn" : "")} data-tip="Save for later, pull in when ready"
                       onClick={() => { setDraftBucket((b) => (b === "someday" ? "today" : "someday")); play("nav"); }}>🗂 Someday</button>
-                     <button className={"cat energy" + (draftEnergy ? " catOn" : "")} data-tip="Cycle energy: none → 🟢 low → 🟡 medium → 🔴 high"
+                     <button className={"cat energy" + (draftEnergy ? " catOn" : "")} data-tip="How much does this ask of you? none → low → medium → high"
   onClick={cycleDraftEnergy}>
-  {draftEnergy ? ENERGY[draftEnergy] : "⚪"} {draftEnergy ? draftEnergy : "Energy"}
+  {draftEnergy ? `${ENERGY[draftEnergy]} ${draftEnergy}` : "Energy"}
 </button>
                     <span className="tipWrap" data-tip="Optional time — enables calendar export and reminders">
                       <TimeField value={draftTime} onChange={setDraftTime} />
@@ -2282,7 +2282,7 @@ const tinyWins = useMemo(() => {
                 ))}
               </div>
               <textarea ref={journalTextRef} rows={6} value={entryText} onChange={(e) => setEntryText(e.target.value)} onKeyDown={keySound}
-                placeholder="Write it down, and set it down… (press / to focus)" aria-label="Journal entry" />
+                placeholder="Write it down, and set it down…" aria-label="Journal entry" />
               {entryTags.length > 0 && (
                 <div className="draftTagRow">
                   {entryTags.map((tag) => (
@@ -2526,7 +2526,7 @@ const tinyWins = useMemo(() => {
             <div className="compose pocketCompose">
               <input ref={pocketInputRef} value={pTitle} onChange={(e) => setPTitle(e.target.value)}
                 onKeyDown={(e) => { keySound(e); if (e.key === "Enter") savePocket(); }}
-                placeholder="A quote, an idea, a little treasure… (press / to focus)" aria-label="Pocket item" />
+                placeholder="A quote, an idea, a little treasure…" aria-label="Pocket item" />
               <div className="catRow">
                 <input className="linkIn" value={pLink} onChange={(e) => setPLink(e.target.value)}
                   onKeyDown={(e) => { keySound(e); if (e.key === "Enter") savePocket(); }}
